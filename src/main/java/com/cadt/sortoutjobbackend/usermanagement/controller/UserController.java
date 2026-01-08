@@ -2,8 +2,8 @@ package com.cadt.sortoutjobbackend.usermanagement.controller;
 
 import com.cadt.sortoutjobbackend.usermanagement.dto.UserDTO;
 import com.cadt.sortoutjobbackend.usermanagement.dto.UserRegistrationRequest;
-import com.cadt.sortoutjobbackend.usermanagement.entity.User;
 import com.cadt.sortoutjobbackend.usermanagement.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +20,7 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserRegistrationRequest request) {
         UserDTO savedUser = userService.createUser(request);
         return ResponseEntity.ok(savedUser);
     }
