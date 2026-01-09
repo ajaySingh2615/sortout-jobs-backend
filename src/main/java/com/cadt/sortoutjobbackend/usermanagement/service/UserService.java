@@ -8,6 +8,10 @@ import java.util.Optional;
 
 public interface UserService {
     UserDTO createUser(UserRegistrationRequest request);
+
     List<UserDTO> getAllUsers();
+
     Optional<UserDTO> getUserById(Long id);
+
+    void deleteUser(Long id);
 }

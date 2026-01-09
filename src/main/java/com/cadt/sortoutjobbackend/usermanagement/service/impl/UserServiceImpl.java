@@ -52,4 +52,9 @@ public class UserServiceImpl implements UserService {
     public Optional<UserDTO> getUserById(Long id) {
         return userRepository.findById(id).map(userMapper::toDTO);
     }
+
+    @Override
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
 }
