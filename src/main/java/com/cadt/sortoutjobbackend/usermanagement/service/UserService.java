@@ -6,7 +6,7 @@ import com.cadt.sortoutjobbackend.usermanagement.dto.UserRegistrationRequest;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
 import com.cadt.sortoutjobbackend.usermanagement.mapper.UserMapper;
 import com.cadt.sortoutjobbackend.usermanagement.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,10 +18,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper) {
+    public UserService(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserDTO createUser(UserRegistrationRequest request) {
@@ -29,13 +31,15 @@ public class UserService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ResourceConflictException("User", "email", request.getEmail());
         }
-        
+
         // DTO -> Entity
         User user = userMapper.toEntity(request);
-        
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
         // save entity
         User savedUser = userRepository.save(user);
-        
+
         // Entity -> DTO
         return userMapper.toDTO(savedUser);
     }
