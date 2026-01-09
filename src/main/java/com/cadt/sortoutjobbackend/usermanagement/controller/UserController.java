@@ -1,9 +1,7 @@
 package com.cadt.sortoutjobbackend.usermanagement.controller;
 
 import com.cadt.sortoutjobbackend.usermanagement.dto.UserDTO;
-import com.cadt.sortoutjobbackend.usermanagement.dto.UserRegistrationRequest;
 import com.cadt.sortoutjobbackend.usermanagement.service.UserService;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
