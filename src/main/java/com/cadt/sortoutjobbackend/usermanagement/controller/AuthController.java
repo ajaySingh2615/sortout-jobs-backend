@@ -2,11 +2,17 @@ package com.cadt.sortoutjobbackend.usermanagement.controller;
 
 import com.cadt.sortoutjobbackend.usermanagement.dto.LoginRequest;
 import com.cadt.sortoutjobbackend.usermanagement.dto.LoginResponse;
+import com.cadt.sortoutjobbackend.usermanagement.dto.SessionDTO;
 import com.cadt.sortoutjobbackend.usermanagement.dto.TokenRefreshRequest;
 import com.cadt.sortoutjobbackend.usermanagement.dto.TokenRefreshResponse;
 import com.cadt.sortoutjobbackend.usermanagement.dto.UserRegistrationRequest;
+import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.service.AuthService;
+import com.cadt.sortoutjobbackend.usermanagement.service.RefreshTokenService;
 import jakarta.validation.Valid;
+
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,9 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RefreshTokenService refreshTokenService) {
         this.authService = authService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @PostMapping("/register")
@@ -39,10 +47,33 @@ public class AuthController {
         return ResponseEntity.ok(authService.refreshToken(request));
     }
 
-    @PostMapping("/logout/{userId}")
-    public ResponseEntity<String> logout(@PathVariable Long userId) {
-        authService.logout(userId);
+    // Logout current session (by refresh token)
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestBody TokenRefreshRequest request) {
+        refreshTokenService.deleteByToken(request.getRefreshToken());
         return ResponseEntity.ok("Logged out successfully");
+    }
+
+    // Logout all devices
+    @PostMapping("/logout-all/{userId}")
+    public ResponseEntity<String> logoutAllDevices(@PathVariable Long userId) {
+        refreshTokenService.deleteAllByUserId(userId);
+        return ResponseEntity.ok("All devices logged out successfully");
+    }
+
+    // Get active sessions
+    public ResponseEntity<List<SessionDTO>> getActiveSessions(@PathVariable Long userId) {
+        List<RefreshToken> tokens = refreshTokenService.getActiveSessionsByUserId(userId);
+        List<SessionDTO> sessions = tokens.stream()
+                .map(t -> new SessionDTO(
+                        t.getId(),
+                        t.getToken().substring(0, 8) + "...",
+                        t.getCreatedAt(),
+                        t.getExpiryDate(),
+                        false))
+                .toList();
+
+        return ResponseEntity.ok(sessions);
     }
 
 }
