@@ -10,11 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class RefreshTokenServiceImpl implements RefreshTokenService {
+
+    private static final int MAX_SESSIONS = 3;
 
     @Value("${jwt.refresh-expiration}")
     private Long refreshTokenExpiration;
@@ -33,17 +36,22 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Find and delete existing refresh token for this user
-        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
-        if (existingToken.isPresent()) {
-            refreshTokenRepository.delete(existingToken.get());
-            refreshTokenRepository.flush(); // Force the delete to execute
+        List<RefreshToken> existingTokens = refreshTokenRepository.findByUserOrderByCreatedAtAsc(user);
+
+        // if user has MAX_SESSIONS or more, remove the oldest ones
+        while (existingTokens.size() >= MAX_SESSIONS) {
+            RefreshToken oldestToken = existingTokens.getFirst();
+            refreshTokenRepository.delete(oldestToken);
+            refreshTokenRepository.flush();
+            existingTokens.removeFirst();
         }
 
+        // create new token
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
         refreshToken.setToken(UUID.randomUUID().toString());
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenExpiration));
+
         return refreshTokenRepository.save(refreshToken);
     }
 

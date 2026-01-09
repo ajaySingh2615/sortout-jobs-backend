@@ -24,7 +24,14 @@ public class RefreshToken {
     @Column(nullable = false)
     private Instant expiryDate;
 
-    @OneToOne
+    @Column(nullable = false)
+    private Instant createdAt;
+
+    @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
+
+    protected void onCreate() {
+        createdAt = Instant.now();
+    }
 }
