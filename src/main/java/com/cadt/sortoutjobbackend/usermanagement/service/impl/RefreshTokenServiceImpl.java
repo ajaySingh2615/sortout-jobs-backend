@@ -28,12 +28,17 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
+    @Transactional
     public RefreshToken createRefreshToken(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Delete existing refresh token for this
-        refreshTokenRepository.deleteByUser(user);
+        // Find and delete existing refresh token for this user
+        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
+        if (existingToken.isPresent()) {
+            refreshTokenRepository.delete(existingToken.get());
+            refreshTokenRepository.flush(); // Force the delete to execute
+        }
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
