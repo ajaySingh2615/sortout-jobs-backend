@@ -51,6 +51,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         refreshToken.setUser(user);
         refreshToken.setToken(UUID.randomUUID().toString());
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenExpiration));
+        refreshToken.setCreatedAt(Instant.now());
 
         return refreshTokenRepository.save(refreshToken);
     }
@@ -75,5 +76,27 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         refreshTokenRepository.deleteByUser(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByToken(String token) {
+        refreshTokenRepository.findByToken(token)
+                .ifPresent(refreshTokenRepository::delete);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAllByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        refreshTokenRepository.deleteByUser(user);
+    }
+
+    @Override
+    public List<RefreshToken> getActiveSessionsByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return refreshTokenRepository.findByUserOrderByCreatedAtAsc(user);
     }
 }

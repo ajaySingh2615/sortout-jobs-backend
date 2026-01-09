@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -62,6 +63,7 @@ public class AuthController {
     }
 
     // Get active sessions
+    @GetMapping("/sessions/{userId}")
     public ResponseEntity<List<SessionDTO>> getActiveSessions(@PathVariable Long userId) {
         List<RefreshToken> tokens = refreshTokenService.getActiveSessionsByUserId(userId);
         List<SessionDTO> sessions = tokens.stream()
