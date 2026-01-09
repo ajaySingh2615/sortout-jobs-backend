@@ -19,12 +19,6 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping
-    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserRegistrationRequest request) {
-        UserDTO savedUser = userService.createUser(request);
-        return ResponseEntity.ok(savedUser);
-    }
-
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
