@@ -50,6 +50,11 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));
 
+        // Check if user registered with OAuth/Phone - they can't use password login
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            throw new RuntimeException("This account uses Google or Phone login. Please use the original method.");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");
         }

@@ -1,13 +1,9 @@
 package com.cadt.sortoutjobbackend.usermanagement.controller;
 
-import com.cadt.sortoutjobbackend.usermanagement.dto.LoginRequest;
-import com.cadt.sortoutjobbackend.usermanagement.dto.LoginResponse;
-import com.cadt.sortoutjobbackend.usermanagement.dto.SessionDTO;
-import com.cadt.sortoutjobbackend.usermanagement.dto.TokenRefreshRequest;
-import com.cadt.sortoutjobbackend.usermanagement.dto.TokenRefreshResponse;
-import com.cadt.sortoutjobbackend.usermanagement.dto.UserRegistrationRequest;
+import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.service.AuthService;
+import com.cadt.sortoutjobbackend.usermanagement.service.PhoneAuthService;
 import com.cadt.sortoutjobbackend.usermanagement.service.RefreshTokenService;
 import jakarta.validation.Valid;
 
@@ -27,10 +23,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
+    private final PhoneAuthService phoneAuthService;
 
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService) {
+    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, PhoneAuthService phoneAuthService) {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
+        this.phoneAuthService = phoneAuthService;
     }
 
     @PostMapping("/register")
@@ -76,6 +74,19 @@ public class AuthController {
                 .toList();
 
         return ResponseEntity.ok(sessions);
+    }
+
+    // send otp
+    @PostMapping("/phone/send-otp")
+    public ResponseEntity<String> sendOtp(@Valid @RequestBody PhoneSendOtpRequest request) {
+        phoneAuthService.sendOtp(request.getPhone());
+        return ResponseEntity.ok("OTP send successfully");
+    }
+
+    // verify otp
+    @PostMapping("/phone/verify-otp")
+    public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody PhoneVerifyOtpRequest request) {
+        return ResponseEntity.ok(phoneAuthService.verifyOtpAndLogin(request.getPhone(), request.getOtp()));
     }
 
 }

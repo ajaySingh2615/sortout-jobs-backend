@@ -43,9 +43,26 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String picture = oAuth2User.getAttribute("picture");
         String providerId = oAuth2User.getAttribute("sub");
 
-        // find or create user
+        // Find existing user by email OR create new user
+        // This handles account linking - if user registered with email first,
+        // then logs in with Google, we link the Google account to existing user
         User user = userRepository.findByEmail(email)
+                .map(existingUser -> {
+                    // Link Google to existing account - update Google profile info
+                    if (existingUser.getProviderId() == null) {
+                        existingUser.setProviderId(providerId);
+                    }
+                    // Update profile info from Google if not already set
+                    if (existingUser.getName() == null || existingUser.getName().isEmpty()) {
+                        existingUser.setName(name);
+                    }
+                    if (existingUser.getProfilePicture() == null) {
+                        existingUser.setProfilePicture(picture);
+                    }
+                    return userRepository.save(existingUser);
+                })
                 .orElseGet(() -> {
+                    // Create new user only if email doesn't exist
                     User newUser = new User();
                     newUser.setEmail(email);
                     newUser.setName(name);

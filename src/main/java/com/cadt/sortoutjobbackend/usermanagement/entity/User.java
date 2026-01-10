@@ -32,4 +32,7 @@ public class User {
 
     private String profilePicture;  // From Google profile
 
+    @Column(unique = true)
+    private String phone;
+
 }
