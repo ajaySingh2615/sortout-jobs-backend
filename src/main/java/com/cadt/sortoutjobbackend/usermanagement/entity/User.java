@@ -36,6 +36,6 @@ public class User {
     private String phone;
 
     @Column
-    private boolean emailVerified = false;
+    private Boolean emailVerified = false;
 
 }

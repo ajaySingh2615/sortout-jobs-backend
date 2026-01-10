@@ -1,8 +1,10 @@
 package com.cadt.sortoutjobbackend.usermanagement.controller;
 
+import com.cadt.sortoutjobbackend.common.dto.ApiResponse;
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.usermanagement.dto.UserDTO;
 import com.cadt.sortoutjobbackend.usermanagement.service.UserService;
-import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,23 +23,23 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<ApiResponse<List<UserDTO>>> getAllUsers() {
+        List<UserDTO> users = userService.getAllUsers();
+        return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('JOB_SEEKER') or hasRole('RECRUITER')")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ApiResponse<UserDTO>> getUserById(@PathVariable Long id) {
+        UserDTO user = userService.getUserById(id)
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
+        return ResponseEntity.ok(ApiResponse.success("User retrieved successfully", user));
     }
 
-    // Only ADMIN can delete users
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
-        return ResponseEntity.ok("User deleted successfully");
+        return ResponseEntity.ok(ApiResponse.success("User deleted successfully"));
     }
 }

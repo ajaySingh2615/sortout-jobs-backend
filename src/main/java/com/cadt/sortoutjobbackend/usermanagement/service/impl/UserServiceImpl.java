@@ -1,6 +1,7 @@
 package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
-import com.cadt.sortoutjobbackend.common.exception.ResourceConflictException;
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.Otp;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
@@ -40,7 +41,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO createUser(UserRegistrationRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ResourceConflictException("User", "email", request.getEmail());
+            throw new ApiException(ErrorCode.USER_EMAIL_EXISTS);
         }
 
         User user = userMapper.toEntity(request);
@@ -72,7 +73,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserDTO updateProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
         if (request.getName() != null) {
             user.setName(request.getName());
@@ -90,16 +91,16 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
         // check if user has a password (not OAuth/Phone)
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            throw new RuntimeException("Cannot change password for OAuth/Phone accounts");
+            throw new ApiException(ErrorCode.USER_CANNOT_CHANGE_PASSWORD);
         }
 
         // verify current password
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Current password is incorrect");
+            throw new ApiException(ErrorCode.USER_PASSWORD_MISMATCH);
         }
 
         // Set new password
@@ -111,19 +112,19 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void linkPhone(Long userId, LinkPhoneRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
         // Verify OTP
         Otp otp = otpRepository.findByPhoneAndVerifiedFalse(request.getPhone())
-                .orElseThrow(() -> new RuntimeException("OTP expired"));
+                .orElseThrow(() -> new ApiException(ErrorCode.OTP_NOT_FOUND));
 
         if (otp.getExpiryTime().isBefore(Instant.now())) {
             otpRepository.delete(otp);
-            throw new RuntimeException("OTP expired");
+            throw new ApiException(ErrorCode.OTP_EXPIRED);
         }
 
         if (!otp.getOtpCode().equals(request.getOtp())) {
-            throw new RuntimeException("Invalid OTP");
+            throw new ApiException(ErrorCode.OTP_INVALID);
         }
 
         // Link phone
@@ -138,7 +139,7 @@ public class UserServiceImpl implements UserService {
     public void sendPhoneLinkOtp(Long userId, String phone) {
         // Check if phone already used
         if (userRepository.findByPhone(phone).isPresent()) {
-            throw new RuntimeException("Phone number already linked to another account");
+            throw new ApiException(ErrorCode.USER_PHONE_EXISTS);
         }
 
         // Delete existing OTP

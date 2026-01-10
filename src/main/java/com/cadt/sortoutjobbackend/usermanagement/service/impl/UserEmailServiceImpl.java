@@ -1,5 +1,7 @@
 package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.common.service.EmailService;
 import com.cadt.sortoutjobbackend.usermanagement.entity.EmailVerificationToken;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
@@ -109,14 +111,14 @@ public class UserEmailServiceImpl implements UserEmailService {
     @Transactional
     public boolean verifyEmail(String token) {
         EmailVerificationToken verificationToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid verification token"));
+                .orElseThrow(() -> new ApiException(ErrorCode.VERIFICATION_TOKEN_INVALID));
 
         if (verificationToken.isUsed()) {
-            throw new RuntimeException("Token already used");
+            throw new ApiException(ErrorCode.VERIFICATION_TOKEN_USED);
         }
 
         if (verificationToken.getExpiryTime().isBefore(Instant.now())) {
-            throw new RuntimeException("Token expired");
+            throw new ApiException(ErrorCode.VERIFICATION_TOKEN_EXPIRED);
         }
 
         // Mark token as used

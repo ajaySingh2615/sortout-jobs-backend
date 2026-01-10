@@ -1,5 +1,7 @@
 package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
 import com.cadt.sortoutjobbackend.usermanagement.repository.RefreshTokenRepository;
@@ -34,7 +36,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public RefreshToken createRefreshToken(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
         List<RefreshToken> existingTokens = refreshTokenRepository.findByUserOrderByCreatedAtAsc(user);
 
@@ -65,7 +67,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().isBefore(Instant.now())) {
             refreshTokenRepository.delete(token);
-            throw new RuntimeException("Refresh token expired. Please login again.");
+            throw new ApiException(ErrorCode.TOKEN_EXPIRED);
         }
         return token;
     }
@@ -74,7 +76,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public void deleteByUserId(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         refreshTokenRepository.deleteByUser(user);
     }
 
@@ -89,14 +91,14 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public void deleteAllByUserId(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         refreshTokenRepository.deleteByUser(user);
     }
 
     @Override
     public List<RefreshToken> getActiveSessionsByUserId(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         return refreshTokenRepository.findByUserOrderByCreatedAtAsc(user);
     }
 }

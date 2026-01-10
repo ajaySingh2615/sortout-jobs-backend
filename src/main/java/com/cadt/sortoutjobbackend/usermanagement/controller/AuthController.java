@@ -1,5 +1,8 @@
 package com.cadt.sortoutjobbackend.usermanagement.controller;
 
+import com.cadt.sortoutjobbackend.common.dto.ApiResponse;
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
@@ -42,37 +45,37 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@Valid @RequestBody UserRegistrationRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody UserRegistrationRequest request) {
+        LoginResponse response = authService.register(request);
+        return ResponseEntity.ok(ApiResponse.success("Registration successful. Please verify your email.", response));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
 
     @PostMapping("/refresh-token")
-    public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-        return ResponseEntity.ok(authService.refreshToken(request));
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        TokenRefreshResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed", response));
     }
 
-    // Logout current session (by refresh token)
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@RequestBody TokenRefreshRequest request) {
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody TokenRefreshRequest request) {
         refreshTokenService.deleteByToken(request.getRefreshToken());
-        return ResponseEntity.ok("Logged out successfully");
+        return ResponseEntity.ok(ApiResponse.success("Logged out successfully"));
     }
 
-    // Logout all devices
     @PostMapping("/logout-all/{userId}")
-    public ResponseEntity<String> logoutAllDevices(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<Void>> logoutAllDevices(@PathVariable Long userId) {
         refreshTokenService.deleteAllByUserId(userId);
-        return ResponseEntity.ok("All devices logged out successfully");
+        return ResponseEntity.ok(ApiResponse.success("All devices logged out successfully"));
     }
 
-    // Get active sessions
     @GetMapping("/sessions/{userId}")
-    public ResponseEntity<List<SessionDTO>> getActiveSessions(@PathVariable Long userId) {
+    public ResponseEntity<ApiResponse<List<SessionDTO>>> getActiveSessions(@PathVariable Long userId) {
         List<RefreshToken> tokens = refreshTokenService.getActiveSessionsByUserId(userId);
         List<SessionDTO> sessions = tokens.stream()
                 .map(t -> new SessionDTO(
@@ -83,42 +86,37 @@ public class AuthController {
                         false))
                 .toList();
 
-        return ResponseEntity.ok(sessions);
+        return ResponseEntity.ok(ApiResponse.success("Active sessions retrieved", sessions));
     }
 
-    // send otp
     @PostMapping("/phone/send-otp")
-    public ResponseEntity<String> sendOtp(@Valid @RequestBody PhoneSendOtpRequest request) {
+    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody PhoneSendOtpRequest request) {
         phoneAuthService.sendOtp(request.getPhone());
-        return ResponseEntity.ok("OTP send successfully");
+        return ResponseEntity.ok(ApiResponse.success("OTP sent successfully"));
     }
 
-    // verify otp
     @PostMapping("/phone/verify-otp")
-    public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody PhoneVerifyOtpRequest request) {
-        return ResponseEntity.ok(phoneAuthService.verifyOtpAndLogin(request.getPhone(), request.getOtp()));
+    public ResponseEntity<ApiResponse<LoginResponse>> verifyOtp(@Valid @RequestBody PhoneVerifyOtpRequest request) {
+        LoginResponse response = phoneAuthService.verifyOtpAndLogin(request.getPhone(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("OTP verified successfully", response));
     }
 
-    // Email verification
     @GetMapping("/verify-email")
-    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam String token) {
         userEmailService.verifyEmail(token);
-        return ResponseEntity.ok("Email verified successfully! Welcome to SortOut Jobs!");
+        return ResponseEntity.ok(ApiResponse.success("Email verified successfully! Welcome to SortOut Jobs!"));
     }
 
-    // Resend verification email
     @PostMapping("/resend-verification")
-    public ResponseEntity<String> resendVerification(@RequestParam String email) {
+    public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestParam String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         
-        if (user.isEmailVerified()) {
-            return ResponseEntity.badRequest().body("Email already verified");
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new ApiException(ErrorCode.AUTH_ALREADY_VERIFIED);
         }
         
         userEmailService.sendVerificationEmail(user);
-        return ResponseEntity.ok("Verification email sent");
+        return ResponseEntity.ok(ApiResponse.success("Verification email sent"));
     }
-
 }
-

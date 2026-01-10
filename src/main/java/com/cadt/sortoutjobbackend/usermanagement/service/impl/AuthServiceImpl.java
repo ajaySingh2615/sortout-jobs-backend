@@ -1,5 +1,7 @@
 package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
+import com.cadt.sortoutjobbackend.common.exception.ApiException;
+import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
 import com.cadt.sortoutjobbackend.common.security.JwtTokenProvider;
 import com.cadt.sortoutjobbackend.usermanagement.dto.LoginRequest;
 import com.cadt.sortoutjobbackend.usermanagement.dto.LoginResponse;
@@ -44,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Send verification email
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
         userEmailService.sendVerificationEmail(user);
 
         String accessToken = jwtTokenProvider.generateToken(request.getEmail());
@@ -56,15 +58,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
         // Check if user registered with OAuth/Phone - they can't use password login
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            throw new RuntimeException("This account uses Google or Phone login. Please use the original method.");
+            throw new ApiException(ErrorCode.AUTH_USE_OAUTH);
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
@@ -78,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
         String requestRefreshToken = request.getRefreshToken();
 
         RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+                .orElseThrow(() -> new ApiException(ErrorCode.TOKEN_NOT_FOUND));
 
         refreshTokenService.verifyExpiration(refreshToken);
 

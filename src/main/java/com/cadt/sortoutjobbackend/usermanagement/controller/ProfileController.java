@@ -1,5 +1,6 @@
 package com.cadt.sortoutjobbackend.usermanagement.controller;
 
+import com.cadt.sortoutjobbackend.common.dto.ApiResponse;
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.service.UserService;
 import jakarta.validation.Valid;
@@ -17,36 +18,34 @@ public class ProfileController {
     }
 
     @PutMapping("/{userId}")
-    public ResponseEntity<UserDTO> updateProfile(
+    public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
             @PathVariable Long userId,
-            @RequestBody UpdateProfileRequest request
-    ) {
-        return ResponseEntity.ok(userService.updateProfile(userId, request));
+            @RequestBody UpdateProfileRequest request) {
+        UserDTO response = userService.updateProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
 
     @PostMapping("/{userId}/change-password")
-    public ResponseEntity<String> changePassword(
+    public ResponseEntity<ApiResponse<Void>> changePassword(
             @PathVariable Long userId,
-            @Valid @RequestBody ChangePasswordRequest request
-    ) {
+            @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userId, request);
-        return ResponseEntity.ok("Password changed successfully");
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully"));
     }
 
     @PostMapping("/{userId}/link-phone/send-otp")
-    public ResponseEntity<String> sendPhoneLinkOtp(
+    public ResponseEntity<ApiResponse<Void>> sendPhoneLinkOtp(
             @PathVariable Long userId,
-            @RequestBody PhoneSendOtpRequest request
-    ) {
+            @RequestBody PhoneSendOtpRequest request) {
         userService.sendPhoneLinkOtp(userId, request.getPhone());
-        return ResponseEntity.ok("OTP sent successfully");
+        return ResponseEntity.ok(ApiResponse.success("OTP sent successfully"));
     }
 
     @PostMapping("/{userId}/link-phone/verify")
-    public ResponseEntity<String> linkPhone(
+    public ResponseEntity<ApiResponse<Void>> linkPhone(
             @PathVariable Long userId,
             @Valid @RequestBody LinkPhoneRequest request) {
         userService.linkPhone(userId, request);
-        return ResponseEntity.ok("Phone linked successfully");
+        return ResponseEntity.ok(ApiResponse.success("Phone linked successfully"));
     }
 }
