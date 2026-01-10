@@ -23,4 +23,13 @@ public class User {
     private String password;
 
     private String role; // e.g., "JOB_SEEKER", "RECRUITER"
+
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    private String providerId;  // Google's user ID
+
+    private String name;   // From Google profile
+
+    private String profilePicture;  // From Google profile
+
 }
