@@ -12,6 +12,7 @@ import com.cadt.sortoutjobbackend.usermanagement.entity.User;
 import com.cadt.sortoutjobbackend.usermanagement.repository.UserRepository;
 import com.cadt.sortoutjobbackend.usermanagement.service.AuthService;
 import com.cadt.sortoutjobbackend.usermanagement.service.RefreshTokenService;
+import com.cadt.sortoutjobbackend.usermanagement.service.UserEmailService;
 import com.cadt.sortoutjobbackend.usermanagement.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,20 +25,27 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final UserEmailService userEmailService;
 
     public AuthServiceImpl(UserService userService, UserRepository userRepository,
             PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider,
-            RefreshTokenService refreshTokenService) {
+            RefreshTokenService refreshTokenService, UserEmailService userEmailService) {
         this.userService = userService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
+        this.userEmailService = userEmailService;
     }
 
     @Override
     public LoginResponse register(UserRegistrationRequest request) {
         UserDTO userDTO = userService.createUser(request);
+
+        // Send verification email
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userEmailService.sendVerificationEmail(user);
 
         String accessToken = jwtTokenProvider.generateToken(request.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(request.getEmail());

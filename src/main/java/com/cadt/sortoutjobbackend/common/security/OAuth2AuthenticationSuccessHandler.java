@@ -5,6 +5,7 @@ import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
 import com.cadt.sortoutjobbackend.usermanagement.repository.UserRepository;
 import com.cadt.sortoutjobbackend.usermanagement.service.RefreshTokenService;
+import com.cadt.sortoutjobbackend.usermanagement.service.UserEmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,13 +26,16 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final RefreshTokenService refreshTokenService;
+    private final UserEmailService userEmailService;
 
     public OAuth2AuthenticationSuccessHandler(JwtTokenProvider jwtTokenProvider,
                                               UserRepository userRepository,
-                                              RefreshTokenService refreshTokenService) {
+                                              RefreshTokenService refreshTokenService,
+                                              UserEmailService userEmailService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.refreshTokenService = refreshTokenService;
+        this.userEmailService = userEmailService;
     }
 
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -43,22 +47,24 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String picture = oAuth2User.getAttribute("picture");
         String providerId = oAuth2User.getAttribute("sub");
 
+        // Check if this is a new user
+        boolean isNewUser = userRepository.findByEmail(email).isEmpty();
+
         // Find existing user by email OR create new user
-        // This handles account linking - if user registered with email first,
-        // then logs in with Google, we link the Google account to existing user
         User user = userRepository.findByEmail(email)
                 .map(existingUser -> {
                     // Link Google to existing account - update Google profile info
                     if (existingUser.getProviderId() == null) {
                         existingUser.setProviderId(providerId);
                     }
-                    // Update profile info from Google if not already set
                     if (existingUser.getName() == null || existingUser.getName().isEmpty()) {
                         existingUser.setName(name);
                     }
                     if (existingUser.getProfilePicture() == null) {
                         existingUser.setProfilePicture(picture);
                     }
+                    // Google verified email
+                    existingUser.setEmailVerified(true);
                     return userRepository.save(existingUser);
                 })
                 .orElseGet(() -> {
@@ -69,10 +75,16 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     newUser.setProfilePicture(picture);
                     newUser.setAuthProvider(AuthProvider.GOOGLE);
                     newUser.setProviderId(providerId);
-                    newUser.setPassword("");  // No password for oauth users
-                    newUser.setRole("JOB_SEEKER");  // Default role
+                    newUser.setPassword("");
+                    newUser.setRole("JOB_SEEKER");
+                    newUser.setEmailVerified(true); // Google already verified
                     return userRepository.save(newUser);
                 });
+
+        // Send welcome email for new users
+        if (isNewUser) {
+            userEmailService.sendWelcomeEmail(user);
+        }
 
         // Generate tokens
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
@@ -89,3 +101,4 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }
+

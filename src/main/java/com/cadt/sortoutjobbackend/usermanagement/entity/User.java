@@ -35,4 +35,7 @@ public class User {
     @Column(unique = true)
     private String phone;
 
+    @Column
+    private boolean emailVerified = false;
+
 }

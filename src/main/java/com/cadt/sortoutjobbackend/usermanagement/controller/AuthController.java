@@ -2,9 +2,12 @@ package com.cadt.sortoutjobbackend.usermanagement.controller;
 
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
+import com.cadt.sortoutjobbackend.usermanagement.entity.User;
+import com.cadt.sortoutjobbackend.usermanagement.repository.UserRepository;
 import com.cadt.sortoutjobbackend.usermanagement.service.AuthService;
 import com.cadt.sortoutjobbackend.usermanagement.service.PhoneAuthService;
 import com.cadt.sortoutjobbackend.usermanagement.service.RefreshTokenService;
+import com.cadt.sortoutjobbackend.usermanagement.service.UserEmailService;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,11 +28,17 @@ public class AuthController {
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
     private final PhoneAuthService phoneAuthService;
+    private final UserEmailService userEmailService;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, PhoneAuthService phoneAuthService) {
+    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, 
+                          PhoneAuthService phoneAuthService, UserEmailService userEmailService,
+                          UserRepository userRepository) {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
         this.phoneAuthService = phoneAuthService;
+        this.userEmailService = userEmailService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/register")
@@ -89,4 +99,26 @@ public class AuthController {
         return ResponseEntity.ok(phoneAuthService.verifyOtpAndLogin(request.getPhone(), request.getOtp()));
     }
 
+    // Email verification
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+        userEmailService.verifyEmail(token);
+        return ResponseEntity.ok("Email verified successfully! Welcome to SortOut Jobs!");
+    }
+
+    // Resend verification email
+    @PostMapping("/resend-verification")
+    public ResponseEntity<String> resendVerification(@RequestParam String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.isEmailVerified()) {
+            return ResponseEntity.badRequest().body("Email already verified");
+        }
+        
+        userEmailService.sendVerificationEmail(user);
+        return ResponseEntity.ok("Verification email sent");
+    }
+
 }
+
