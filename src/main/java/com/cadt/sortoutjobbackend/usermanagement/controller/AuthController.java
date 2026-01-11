@@ -50,7 +50,6 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody UserRegistrationRequest request) {
-        // Rate limit by email (3 registrations per hour)
         String rateLimitKey = "register:" + request.getEmail();
         if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
             int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
@@ -63,8 +62,6 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-
-        // Rate limit by email (5 attempts per 15 minutes)
         String rateLimitKey = "login:" + request.getEmail();
         if (!rateLimiter.isAllowed(rateLimitKey, 5, 900)) {
             int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 900);
@@ -113,7 +110,6 @@ public class AuthController {
 
     @PostMapping("/phone/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody PhoneSendOtpRequest request) {
-        // Rate limit by phone (3 OTPs per hour) - prevents SMS bill abuse!
         String rateLimitKey = "otp:" + request.getPhone();
         if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
             int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
@@ -138,7 +134,6 @@ public class AuthController {
 
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestParam String email) {
-        // Rate limit by email (3 emails per hour)
         String rateLimitKey = "resend:" + email;
         if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
             int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
@@ -156,10 +151,8 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Verification email sent"));
     }
 
-    // Forgot Password - Send reset link
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestParam String email) {
-        // Rate limit by email (3 reset emails per hour)
         String rateLimitKey = "forgot:" + email;
         if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
             int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
@@ -173,7 +166,6 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Password reset email sent"));
     }
 
-    // Reset Password - Set new password
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         userEmailService.resetPassword(request.getToken(), request.getNewPassword());
