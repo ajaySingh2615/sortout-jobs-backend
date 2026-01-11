@@ -43,7 +43,12 @@ public enum ErrorCode {
     // General Errors
     INTERNAL_ERROR("ERR_001", "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
     BAD_REQUEST("ERR_002", "Bad request", HttpStatus.BAD_REQUEST),
-    FORBIDDEN("ERR_003", "Access denied", HttpStatus.FORBIDDEN);
+    FORBIDDEN("ERR_003", "Access denied", HttpStatus.FORBIDDEN),
+
+    // RATE LIMIT ERRORS
+    RATE_LIMIT_EXCEEDED("RATE_001", "Too many requests. Please try again later.",
+            HttpStatus.TOO_MANY_REQUESTS);
+
 
     private final String code;
     private final String message;

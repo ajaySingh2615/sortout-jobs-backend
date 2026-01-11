@@ -2,6 +2,7 @@ package com.cadt.sortoutjobbackend.common.exception;
 
 import com.cadt.sortoutjobbackend.common.dto.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -59,5 +60,20 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(error, ErrorCode.INTERNAL_ERROR.getHttpStatus());
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<ApiError> handleRateLimitException(RateLimitException ex,
+                                                             HttpServletRequest request) {
+        ApiError error = ApiError.builder()
+                .success(false)
+                .errorCode("RATE_001")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .timestamp(LocalDateTime.now())
+                .build();
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(error);
     }
 }

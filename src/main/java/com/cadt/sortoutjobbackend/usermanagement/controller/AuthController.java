@@ -3,6 +3,8 @@ package com.cadt.sortoutjobbackend.usermanagement.controller;
 import com.cadt.sortoutjobbackend.common.dto.ApiResponse;
 import com.cadt.sortoutjobbackend.common.exception.ApiException;
 import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
+import com.cadt.sortoutjobbackend.common.exception.RateLimitException;
+import com.cadt.sortoutjobbackend.common.ratelimit.RateLimiterService;
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.RefreshToken;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
@@ -33,15 +35,17 @@ public class AuthController {
     private final PhoneAuthService phoneAuthService;
     private final UserEmailService userEmailService;
     private final UserRepository userRepository;
+    private final RateLimiterService rateLimiter;
 
-    public AuthController(AuthService authService, RefreshTokenService refreshTokenService, 
+    public AuthController(AuthService authService, RefreshTokenService refreshTokenService,
                           PhoneAuthService phoneAuthService, UserEmailService userEmailService,
-                          UserRepository userRepository) {
+                          UserRepository userRepository, RateLimiterService rateLimiter) {
         this.authService = authService;
         this.refreshTokenService = refreshTokenService;
         this.phoneAuthService = phoneAuthService;
         this.userEmailService = userEmailService;
         this.userRepository = userRepository;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/register")
@@ -52,6 +56,17 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+
+        // Rate limit by email (5 attempts per 15 minutes)
+        String rateLimitKey = "login:" + request.getEmail();
+        if (!rateLimiter.isAllowed(rateLimitKey, 5, 900)) {
+            int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 900);
+            throw new RateLimitException(
+                    "Too many login attempts. Try again in " + (retryAfter / 60) + " minutes.",
+                    retryAfter
+            );
+        }
+
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
@@ -111,11 +126,11 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestParam String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
-        
+
         if (Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new ApiException(ErrorCode.AUTH_ALREADY_VERIFIED);
         }
-        
+
         userEmailService.sendVerificationEmail(user);
         return ResponseEntity.ok(ApiResponse.success("Verification email sent"));
     }
@@ -125,7 +140,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestParam String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
-        
+
         userEmailService.sendPasswordResetEmail(user);
         return ResponseEntity.ok(ApiResponse.success("Password reset email sent"));
     }
