@@ -50,6 +50,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody UserRegistrationRequest request) {
+        // Rate limit by email (3 registrations per hour)
+        String rateLimitKey = "register:" + request.getEmail();
+        if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
+            int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
+            throw new RateLimitException("Too many registration attempts. Try again later.", retryAfter);
+        }
+
         LoginResponse response = authService.register(request);
         return ResponseEntity.ok(ApiResponse.success("Registration successful. Please verify your email.", response));
     }
@@ -106,6 +113,13 @@ public class AuthController {
 
     @PostMapping("/phone/send-otp")
     public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody PhoneSendOtpRequest request) {
+        // Rate limit by phone (3 OTPs per hour) - prevents SMS bill abuse!
+        String rateLimitKey = "otp:" + request.getPhone();
+        if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
+            int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
+            throw new RateLimitException("Too many OTP requests. Try again later.", retryAfter);
+        }
+
         phoneAuthService.sendOtp(request.getPhone());
         return ResponseEntity.ok(ApiResponse.success("OTP sent successfully"));
     }
@@ -124,6 +138,13 @@ public class AuthController {
 
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestParam String email) {
+        // Rate limit by email (3 emails per hour)
+        String rateLimitKey = "resend:" + email;
+        if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
+            int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
+            throw new RateLimitException("Too many requests. Try again later.", retryAfter);
+        }
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
@@ -138,6 +159,13 @@ public class AuthController {
     // Forgot Password - Send reset link
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestParam String email) {
+        // Rate limit by email (3 reset emails per hour)
+        String rateLimitKey = "forgot:" + email;
+        if (!rateLimiter.isAllowed(rateLimitKey, 3, 3600)) {
+            int retryAfter = (int) rateLimiter.getSecondsUntilReset(rateLimitKey, 3600);
+            throw new RateLimitException("Too many requests. Try again later.", retryAfter);
+        }
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
