@@ -17,6 +17,12 @@ public class ProfileController {
         this.userService = userService;
     }
 
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(@PathVariable Long userId) {
+        ProfileResponse response = userService.getFullProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", response));
+    }
+
     @PutMapping("/{userId}")
     public ResponseEntity<ApiResponse<UserDTO>> updateProfile(
             @PathVariable Long userId,
@@ -49,3 +55,4 @@ public class ProfileController {
         return ResponseEntity.ok(ApiResponse.success("Phone linked successfully"));
     }
 }
+

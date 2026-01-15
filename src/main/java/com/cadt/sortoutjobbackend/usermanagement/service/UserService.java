@@ -21,4 +21,7 @@ public interface UserService {
     void linkPhone(Long userId, LinkPhoneRequest request);
 
     void sendPhoneLinkOtp(Long userId, String phone);
+
+    ProfileResponse getFullProfile(Long userId);
 }
+

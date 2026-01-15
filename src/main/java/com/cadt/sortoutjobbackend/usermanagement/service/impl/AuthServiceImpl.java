@@ -52,7 +52,14 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtTokenProvider.generateToken(request.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(request.getEmail());
 
-        return new LoginResponse(accessToken, refreshToken.getToken(), userDTO.getEmail(), userDTO.getRole());
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .email(userDTO.getEmail())
+                .role(userDTO.getRole())
+                .userId(user.getId())
+                .isNewUser(true)
+                .build();
     }
 
     @Override
@@ -72,7 +79,14 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
-        return new LoginResponse(accessToken, refreshToken.getToken(), user.getEmail(), user.getRole());
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .userId(user.getId())
+                .isNewUser(false)
+                .build();
     }
 
     @Override

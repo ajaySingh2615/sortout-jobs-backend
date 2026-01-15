@@ -81,9 +81,11 @@ public class PhoneAuthServiceImpl implements PhoneAuthService {
         // Mark as verified and delete
         otpRepository.delete(otpEntity);
 
-        // Find or create user
+        // Find or create user - track if new
+        final boolean[] isNewUser = {false};
         User user = userRepository.findByPhone(phone)
                 .orElseGet(() -> {
+                    isNewUser[0] = true;
                     User newUser = new User();
                     newUser.setPhone(phone);
                     newUser.setEmail(phone + "@phone.local");  // placeholder email
@@ -97,11 +99,13 @@ public class PhoneAuthServiceImpl implements PhoneAuthService {
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
 
-        return new LoginResponse(
-                accessToken,
-                refreshToken.getToken(),
-                user.getEmail(),
-                user.getRole()
-        );
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .userId(user.getId())
+                .isNewUser(isNewUser[0])
+                .build();
     }
 }
