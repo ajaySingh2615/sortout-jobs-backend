@@ -24,7 +24,7 @@ public class PersonalDetails {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    private LocalDate localDate;
+    private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)
     private MaritalStatus maritalStatus;

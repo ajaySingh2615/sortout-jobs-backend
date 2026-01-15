@@ -45,6 +45,10 @@ public enum ErrorCode {
     BAD_REQUEST("ERR_002", "Bad request", HttpStatus.BAD_REQUEST),
     FORBIDDEN("ERR_003", "Access denied", HttpStatus.FORBIDDEN),
 
+    // Resource Errors (RESOURCE_xxx)
+    RESOURCE_NOT_FOUND("RESOURCE_001", "Resource not found", HttpStatus.NOT_FOUND),
+    UNAUTHORIZED("RESOURCE_002", "You are not authorized to access this resource", HttpStatus.FORBIDDEN),
+
     // RATE LIMIT ERRORS
     RATE_LIMIT_EXCEEDED("RATE_001", "Too many requests. Please try again later.",
             HttpStatus.TOO_MANY_REQUESTS);

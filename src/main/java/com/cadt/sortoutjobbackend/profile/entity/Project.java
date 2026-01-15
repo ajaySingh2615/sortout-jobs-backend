@@ -31,7 +31,7 @@ public class Project {
 
     private LocalDate startDate;
     private LocalDate endDate;
-    private Boolean isOnGoing = false;
+    private Boolean isOngoing = false;
 
     private String projectUrl;  // GitHub/live link
 

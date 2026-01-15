@@ -2,10 +2,6 @@ package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
 import com.cadt.sortoutjobbackend.common.exception.ApiException;
 import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
-import com.cadt.sortoutjobbackend.onboarding.entity.UserPreferences;
-import com.cadt.sortoutjobbackend.onboarding.entity.UserProfile;
-import com.cadt.sortoutjobbackend.onboarding.repository.UserPreferencesRepository;
-import com.cadt.sortoutjobbackend.onboarding.repository.UserProfileRepository;
 import com.cadt.sortoutjobbackend.usermanagement.dto.*;
 import com.cadt.sortoutjobbackend.usermanagement.entity.Otp;
 import com.cadt.sortoutjobbackend.usermanagement.entity.User;
@@ -32,21 +28,17 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final OtpRepository otpRepository;
     private final SmsService smsService;
-    private final UserProfileRepository userProfileRepository;
-    private final UserPreferencesRepository userPreferencesRepository;
 
     public UserServiceImpl(UserRepository userRepository, UserMapper userMapper,
-                           PasswordEncoder passwordEncoder, OtpRepository otpRepository, 
-                           SmsService smsService, UserProfileRepository userProfileRepository,
-                           UserPreferencesRepository userPreferencesRepository) {
+                           PasswordEncoder passwordEncoder, OtpRepository otpRepository,
+                           SmsService smsService) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.otpRepository = otpRepository;
         this.smsService = smsService;
-        this.userProfileRepository = userProfileRepository;
-        this.userPreferencesRepository = userPreferencesRepository;
     }
+
 
 
     @Override
@@ -167,62 +159,6 @@ public class UserServiceImpl implements UserService {
 
         smsService.sendOtp(phone, otpCode);
     }
-
-    @Override
-    @Transactional(readOnly = true)
-    public ProfileResponse getFullProfile(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
-
-        ProfileResponse.ProfileResponseBuilder builder = ProfileResponse.builder()
-                .userId(user.getId())
-                .phone(user.getPhone())
-                .email(user.getEmail())
-                .name(user.getName())
-                .profilePicture(user.getProfilePicture());
-
-        // Get UserProfile if exists
-        Optional<UserProfile> profileOpt = userProfileRepository.findByUserId(userId);
-        if (profileOpt.isPresent()) {
-            UserProfile profile = profileOpt.get();
-            builder.fullName(profile.getFullName())
-                    .gender(profile.getGender() != null ? profile.getGender().name() : null)
-                    .educationLevel(profile.getEducationLevel() != null ? profile.getEducationLevel().name() : null)
-                    .hasExperience(profile.getHasExperience())
-                    .experienceLevel(profile.getExperienceLevel() != null ? profile.getExperienceLevel().name() : null)
-                    .currentSalary(profile.getCurrentSalary())
-                    .whatsappUpdates(profile.getWhatsappUpdates())
-                    .profileCompleted(profile.getProfileCompleted());
-        }
-
-        // Get UserPreferences if exists
-        Optional<UserPreferences> prefsOpt = userPreferencesRepository.findByUserIdWithDetails(userId);
-        if (prefsOpt.isPresent()) {
-            UserPreferences prefs = prefsOpt.get();
-            if (prefs.getPreferredCity() != null) {
-                builder.cityId(prefs.getPreferredCity().getId())
-                        .cityName(prefs.getPreferredCity().getName());
-            }
-            if (prefs.getPreferredLocality() != null) {
-                builder.localityId(prefs.getPreferredLocality().getId())
-                        .localityName(prefs.getPreferredLocality().getName());
-            }
-            if (prefs.getPreferredRole() != null) {
-                builder.roleId(prefs.getPreferredRole().getId())
-                        .roleName(prefs.getPreferredRole().getName());
-            }
-            if (prefs.getSkills() != null && !prefs.getSkills().isEmpty()) {
-                List<ProfileResponse.SkillInfo> skills = prefs.getSkills().stream()
-                        .map(s -> ProfileResponse.SkillInfo.builder()
-                                .id(s.getId())
-                                .name(s.getName())
-                                .build())
-                        .collect(Collectors.toList());
-                builder.skills(skills);
-            }
-        }
-
-        return builder.build();
-    }
 }
+
 
