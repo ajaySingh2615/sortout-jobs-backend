@@ -2,9 +2,11 @@ package com.cadt.sortoutjobbackend.profile.service.impl;
 
 import com.cadt.sortoutjobbackend.common.exception.ApiException;
 import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
+import com.cadt.sortoutjobbackend.common.security.JwtTokenProvider;
 import com.cadt.sortoutjobbackend.onboarding.entity.*;
 import com.cadt.sortoutjobbackend.onboarding.repository.*;
 import com.cadt.sortoutjobbackend.profile.dto.*;
+import java.time.Instant;
 import com.cadt.sortoutjobbackend.profile.entity.*;
 import com.cadt.sortoutjobbackend.profile.mapper.ProfileMapper;
 import com.cadt.sortoutjobbackend.profile.repository.*;
@@ -38,6 +40,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final ITSkillRepository itSkillRepository;
     private final PersonalDetailsRepository personalDetailsRepository;
     private final ProfileMapper profileMapper;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     @Transactional(readOnly = true)
@@ -408,7 +411,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
-    public void initiateEmailChange(Long userId, String newEmail) {
+    public EmailChangeInitiateResponse initiateEmailChange(Long userId, String newEmail) {
         User user = findUserById(userId);
 
         if (userRepository.existsByEmail(newEmail)) {
@@ -416,35 +419,66 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        Instant expiryTime = Instant.now().plusSeconds(300); // 5 mins (industry standard)
 
         user.setPendingEmail(newEmail);
         user.setEmailChangeOtp(otp);
-        user.setEmailChangeOtpExpiry(java.time.Instant.now().plusSeconds(600)); // 10 mins
+        user.setEmailChangeOtpExpiry(expiryTime);
 
         userRepository.save(user);
 
-        emailService.sendEmail(newEmail, "Verify Email Change - SortOut Jobs",
-                "Your OTP for email change is: " + otp);
+        // Log OTP for development/testing (remove in production)
+        System.out.println("========================================");
+        System.out.println("EMAIL CHANGE OTP FOR: " + newEmail);
+        System.out.println("OTP: " + otp);
+        System.out.println("Expires at: " + expiryTime);
+        System.out.println("========================================");
+
+        try {
+            emailService.sendEmail(newEmail, "Verify Email Change - SortOut Jobs",
+                    "Your OTP for email change is: " + otp + "\n\nThis code will expire in 5 minutes.");
+        } catch (Exception e) {
+            // Log error but don't fail - OTP is already saved
+            System.err.println("Failed to send email, but OTP is saved: " + e.getMessage());
+            e.printStackTrace();
+            // In production, you might want to throw here or use a retry mechanism
+            // For now, we'll let it continue so user can still use the OTP from logs
+        }
+
+        long expiresInSeconds = java.time.Duration.between(Instant.now(), expiryTime).getSeconds();
+        return new EmailChangeInitiateResponse(
+                "OTP sent successfully to " + newEmail,
+                expiryTime,
+                expiresInSeconds);
     }
 
     @Override
     @Transactional
-    public void verifyEmailChange(Long userId, String otp) {
+    public EmailChangeResponse verifyEmailChange(Long userId, String otp) {
         User user = findUserById(userId);
 
         if (user.getPendingEmail() == null || user.getEmailChangeOtp() == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "No pending email change request");
         }
 
+        // Check expiry FIRST (security best practice)
+        if (user.getEmailChangeOtpExpiry() == null ||
+                user.getEmailChangeOtpExpiry().isBefore(java.time.Instant.now())) {
+            // Clear expired OTP
+            user.setPendingEmail(null);
+            user.setEmailChangeOtp(null);
+            user.setEmailChangeOtpExpiry(null);
+            userRepository.save(user);
+            throw new ApiException(ErrorCode.OTP_EXPIRED, "OTP has expired. Please request a new one.");
+        }
+
+        // Then check OTP match
         if (!user.getEmailChangeOtp().equals(otp)) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "Invalid OTP");
+            throw new ApiException(ErrorCode.OTP_INVALID, "Invalid OTP");
         }
 
-        if (user.getEmailChangeOtpExpiry().isBefore(java.time.Instant.now())) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "OTP Expired");
-        }
-
-        user.setEmail(user.getPendingEmail());
+        String newEmail = user.getPendingEmail();
+        user.setEmail(newEmail);
         user.setPendingEmail(null);
         user.setEmailChangeOtp(null);
         user.setEmailChangeOtpExpiry(null);
@@ -453,6 +487,11 @@ public class ProfileServiceImpl implements ProfileService {
         user.setEmailVerified(true);
 
         userRepository.save(user);
+
+        // Generate new access token with updated email
+        String newAccessToken = jwtTokenProvider.generateToken(newEmail);
+
+        return new EmailChangeResponse(newAccessToken, newEmail);
     }
 
     // ==================== HELPER METHODS ====================

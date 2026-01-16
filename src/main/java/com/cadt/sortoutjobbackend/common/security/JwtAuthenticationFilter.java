@@ -35,22 +35,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Validate token
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+            try {
+                // 3. Get email from token
+                String email = jwtTokenProvider.getEmailFromToken(token);
 
-            // 3. Get email from token
-            String email = jwtTokenProvider.getEmailFromToken(token);
+                // 4. Load user details
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            // 4. Load user details
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                // 5. Create authentication object
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            // 5. Create authentication object
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            // 6. Set authentication in context
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                // 6. Set authentication in context
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (Exception e) {
+                // If user not found or any error, clear context and continue
+                // This allows the request to proceed and return 401 if endpoint requires auth
+                SecurityContextHolder.clearContext();
+            }
         }
 
         // 7. Continue filter chain

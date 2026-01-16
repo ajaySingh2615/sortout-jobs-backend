@@ -49,19 +49,19 @@ public class ProfileController {
     }
 
     @PostMapping("/{userId}/email/initiate")
-    public ResponseEntity<ApiResponse<Void>> initiateEmailChange(
+    public ResponseEntity<ApiResponse<EmailChangeInitiateResponse>> initiateEmailChange(
             @PathVariable Long userId,
             @Valid @RequestBody EmailChangeRequest request) {
-        profileService.initiateEmailChange(userId, request.getNewEmail());
-        return ResponseEntity.ok(ApiResponse.success("OTP sent to new email"));
+        EmailChangeInitiateResponse response = profileService.initiateEmailChange(userId, request.getNewEmail());
+        return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 
     @PostMapping("/{userId}/email/verify")
-    public ResponseEntity<ApiResponse<Void>> verifyEmailChange(
+    public ResponseEntity<ApiResponse<EmailChangeResponse>> verifyEmailChange(
             @PathVariable Long userId,
             @Valid @RequestBody EmailVerificationRequest request) {
-        profileService.verifyEmailChange(userId, request.getOtp());
-        return ResponseEntity.ok(ApiResponse.success("Email updated successfully"));
+        EmailChangeResponse response = profileService.verifyEmailChange(userId, request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Email updated successfully", response));
     }
 
     // ==================== PASSWORD & PHONE ====================
