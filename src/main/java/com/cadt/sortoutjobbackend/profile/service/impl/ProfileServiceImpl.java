@@ -51,6 +51,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .userId(user.getId())
                 .phone(user.getPhone())
                 .email(user.getEmail())
+                .emailVerified(user.getEmailVerified())
                 .profilePicture(user.getProfilePicture());
 
         // UserProfile (onboarding)
