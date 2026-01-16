@@ -47,4 +47,9 @@ public interface ProfileService {
     // Personal Details
     PersonalDetailsDTO getPersonalDetails(Long userId);
     void updatePersonalDetails(Long userId, PersonalDetailsDTO dto);
+
+    // Basic Profile & Email
+    void updateBasicProfile(Long userId, BasicProfileRequest request);
+    void initiateEmailChange(Long userId, String newEmail);
+    void verifyEmailChange(Long userId, String otp);
 }

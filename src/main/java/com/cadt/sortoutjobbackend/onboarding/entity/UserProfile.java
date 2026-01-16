@@ -37,6 +37,10 @@ public class UserProfile {
     private ExperienceLevel experienceLevel;
 
     private Integer currentSalary;  // Monthly salary (null if fresher)
+    
+    @Column(length = 50)
+    private String noticePeriod;
+    
     private Boolean whatsappUpdates = false;
     private Boolean profileCompleted = false;
     private Instant createdAt;

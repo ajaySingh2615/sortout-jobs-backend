@@ -2,8 +2,8 @@ package com.cadt.sortoutjobbackend.profile.service.impl;
 
 import com.cadt.sortoutjobbackend.common.exception.ApiException;
 import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
-import com.cadt.sortoutjobbackend.onboarding.repository.UserPreferencesRepository;
-import com.cadt.sortoutjobbackend.onboarding.repository.UserProfileRepository;
+import com.cadt.sortoutjobbackend.onboarding.entity.*;
+import com.cadt.sortoutjobbackend.onboarding.repository.*;
 import com.cadt.sortoutjobbackend.profile.dto.*;
 import com.cadt.sortoutjobbackend.profile.entity.*;
 import com.cadt.sortoutjobbackend.profile.mapper.ProfileMapper;
@@ -26,6 +26,9 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserPreferencesRepository userPreferencesRepository;
+    private final CityRepository cityRepository;
+    private final LocalityRepository localityRepository;
+    private final com.cadt.sortoutjobbackend.common.service.EmailService emailService;
     private final ResumeRepository resumeRepository;
     private final ResumeHeadlineRepository resumeHeadlineRepository;
     private final ProfileSummaryRepository profileSummaryRepository;
@@ -54,15 +57,18 @@ public class ProfileServiceImpl implements ProfileService {
                     .educationLevel(profile.getEducationLevel() != null ? profile.getEducationLevel().name() : null)
                     .hasExperience(profile.getHasExperience())
                     .experienceLevel(profile.getExperienceLevel() != null ? profile.getExperienceLevel().name() : null)
-                    .currentSalary(profile.getCurrentSalary());
+                    .currentSalary(profile.getCurrentSalary())
+                    .noticePeriod(profile.getNoticePeriod());
         });
 
         // UserPreferences (onboarding)
         userPreferencesRepository.findByUserIdWithDetails(userId).ifPresent(prefs -> {
             if (prefs.getPreferredCity() != null) {
+                builder.cityId(prefs.getPreferredCity().getId());
                 builder.cityName(prefs.getPreferredCity().getName());
             }
             if (prefs.getPreferredLocality() != null) {
+                builder.localityId(prefs.getPreferredLocality().getId());
                 builder.localityName(prefs.getPreferredLocality().getName());
             }
         });
@@ -105,13 +111,13 @@ public class ProfileServiceImpl implements ProfileService {
 
         Resume resume = resumeRepository.findByUserId(userId)
                 .orElse(new Resume());
-        
+
         resume.setUser(user);
         resume.setFileUrl(fileUrl);
         resume.setFileName(file.getOriginalFilename());
         resume.setFileType(file.getContentType());
         resume.setFileSize(file.getSize());
-        
+
         resumeRepository.save(resume);
     }
 
@@ -130,7 +136,7 @@ public class ProfileServiceImpl implements ProfileService {
 
         ResumeHeadline entity = resumeHeadlineRepository.findByUserId(userId)
                 .orElse(new ResumeHeadline());
-        
+
         entity.setUser(user);
         entity.setHeadline(headline);
         resumeHeadlineRepository.save(entity);
@@ -145,7 +151,7 @@ public class ProfileServiceImpl implements ProfileService {
 
         ProfileSummary entity = profileSummaryRepository.findByUserId(userId)
                 .orElse(new ProfileSummary());
-        
+
         entity.setUser(user);
         entity.setSummary(summary);
         profileSummaryRepository.save(entity);
@@ -317,6 +323,136 @@ public class ProfileServiceImpl implements ProfileService {
         entity.setUser(user);
         profileMapper.updatePersonalDetails(entity, dto);
         personalDetailsRepository.save(entity);
+    }
+
+    // ==================== BASIC PROFILE & EMAIL ====================
+
+    @Override
+    @Transactional
+    public void updateBasicProfile(Long userId, BasicProfileRequest request) {
+        User user = findUserById(userId);
+
+        // 1. Update User Profile (FullName, Experience, Salary, Notice Period)
+        UserProfile userProfile = userProfileRepository.findByUserId(userId)
+                .orElse(new UserProfile());
+
+        userProfile.setUser(user);
+        userProfile.setFullName(request.getFullName());
+        userProfile.setHasExperience(request.getHasExperience());
+
+        // Handle Experience Level with validation
+        // If hasExperience is false, clear all experience-related fields
+        if (Boolean.FALSE.equals(request.getHasExperience())) {
+            userProfile.setExperienceLevel(null);
+            userProfile.setCurrentSalary(null);
+            userProfile.setNoticePeriod(null);
+        } else if (request.getExperienceLevel() != null && !request.getExperienceLevel().isEmpty()) {
+            // Only set experience level if hasExperience is true
+            try {
+                userProfile.setExperienceLevel(ExperienceLevel.valueOf(request.getExperienceLevel()));
+            } catch (IllegalArgumentException e) {
+                throw new ApiException(ErrorCode.VALIDATION_ERROR,
+                        "Invalid experience level: " + request.getExperienceLevel());
+            }
+        } else {
+            userProfile.setExperienceLevel(null);
+        }
+
+        // Only set salary if hasExperience is true
+        if (Boolean.TRUE.equals(request.getHasExperience()) && request.getCurrentSalary() != null) {
+            userProfile.setCurrentSalary(request.getCurrentSalary());
+        } else {
+            userProfile.setCurrentSalary(null);
+        }
+
+        // Only set notice period if hasExperience is true
+        if (Boolean.TRUE.equals(request.getHasExperience())
+                && request.getNoticePeriod() != null && !request.getNoticePeriod().isEmpty()) {
+            userProfile.setNoticePeriod(request.getNoticePeriod());
+        } else {
+            userProfile.setNoticePeriod(null);
+        }
+
+        userProfileRepository.save(userProfile);
+
+        // Update Headline if provided
+        if (request.getHeadline() != null && !request.getHeadline().trim().isEmpty()) {
+            updateResumeHeadline(userId, request.getHeadline());
+        }
+
+        // Update user name in User entity as well if needed (optional but good for
+        // consistency)
+        user.setName(request.getFullName());
+        userRepository.save(user);
+
+        // 2. Update User Preferences (Location)
+        if (request.getCityId() != null && request.getLocalityId() != null) {
+            City city = cityRepository.findById(request.getCityId())
+                    .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_ERROR, "Invalid city"));
+
+            Locality locality = localityRepository.findById(request.getLocalityId())
+                    .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_ERROR, "Invalid locality"));
+
+            UserPreferences preferences = userPreferencesRepository.findByUserId(userId)
+                    .orElse(new UserPreferences());
+
+            preferences.setUser(user);
+            preferences.setPreferredCity(city);
+            preferences.setPreferredLocality(locality);
+
+            userPreferencesRepository.save(preferences);
+        }
+    }
+
+    // Field definition removed from here as it should be at the top level
+
+    @Override
+    @Transactional
+    public void initiateEmailChange(Long userId, String newEmail) {
+        User user = findUserById(userId);
+
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "Email already in use");
+        }
+
+        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+
+        user.setPendingEmail(newEmail);
+        user.setEmailChangeOtp(otp);
+        user.setEmailChangeOtpExpiry(java.time.Instant.now().plusSeconds(600)); // 10 mins
+
+        userRepository.save(user);
+
+        emailService.sendEmail(newEmail, "Verify Email Change - SortOut Jobs",
+                "Your OTP for email change is: " + otp);
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmailChange(Long userId, String otp) {
+        User user = findUserById(userId);
+
+        if (user.getPendingEmail() == null || user.getEmailChangeOtp() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "No pending email change request");
+        }
+
+        if (!user.getEmailChangeOtp().equals(otp)) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "Invalid OTP");
+        }
+
+        if (user.getEmailChangeOtpExpiry().isBefore(java.time.Instant.now())) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "OTP Expired");
+        }
+
+        user.setEmail(user.getPendingEmail());
+        user.setPendingEmail(null);
+        user.setEmailChangeOtp(null);
+        user.setEmailChangeOtpExpiry(null);
+        // Reset email verified if strict, but usually we verify the new email via OTP
+        // so it is verified
+        user.setEmailVerified(true);
+
+        userRepository.save(user);
     }
 
     // ==================== HELPER METHODS ====================

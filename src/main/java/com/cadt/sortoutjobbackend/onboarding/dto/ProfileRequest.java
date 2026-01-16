@@ -28,8 +28,7 @@ public class ProfileRequest {
     @NotNull(message = "City is required")
     private Long preferredCityId;
 
-    @NotNull(message = "Locality is required")
-    private Long preferredLocalityId;
+    private Long preferredLocalityId;  // Optional
 
     private Boolean whatsappUpdates = false;
 }

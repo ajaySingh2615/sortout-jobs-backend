@@ -38,6 +38,32 @@ public class ProfileController {
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
 
+    // ==================== BASIC PROFILE & EMAIL ====================
+
+    @PutMapping("/{userId}/basic")
+    public ResponseEntity<ApiResponse<Void>> updateBasicProfile(
+            @PathVariable Long userId,
+            @Valid @RequestBody BasicProfileRequest request) {
+        profileService.updateBasicProfile(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Basic profile updated successfully"));
+    }
+
+    @PostMapping("/{userId}/email/initiate")
+    public ResponseEntity<ApiResponse<Void>> initiateEmailChange(
+            @PathVariable Long userId,
+            @Valid @RequestBody EmailChangeRequest request) {
+        profileService.initiateEmailChange(userId, request.getNewEmail());
+        return ResponseEntity.ok(ApiResponse.success("OTP sent to new email"));
+    }
+
+    @PostMapping("/{userId}/email/verify")
+    public ResponseEntity<ApiResponse<Void>> verifyEmailChange(
+            @PathVariable Long userId,
+            @Valid @RequestBody EmailVerificationRequest request) {
+        profileService.verifyEmailChange(userId, request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Email updated successfully"));
+    }
+
     // ==================== PASSWORD & PHONE ====================
 
     @PostMapping("/{userId}/change-password")

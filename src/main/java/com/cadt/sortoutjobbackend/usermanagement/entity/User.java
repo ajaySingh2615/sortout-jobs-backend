@@ -38,4 +38,8 @@ public class User {
     @Column
     private Boolean emailVerified = false;
 
+    // Email Change Process
+    private String pendingEmail;
+    private String emailChangeOtp;
+    private java.time.Instant emailChangeOtpExpiry;
 }

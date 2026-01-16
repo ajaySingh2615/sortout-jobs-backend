@@ -23,9 +23,12 @@ public class FullProfileResponse {
     private Boolean hasExperience;
     private String experienceLevel;
     private Integer currentSalary;
+    private String noticePeriod;
     
     // Location (from UserPreferences)
+    private Long cityId;
     private String cityName;
+    private Long localityId;
     private String localityName;
     
     // Profile Module Data

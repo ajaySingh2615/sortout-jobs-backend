@@ -26,9 +26,8 @@ public class MasterDataController {
     private final JobRoleRepository jobRoleRepository;
     private final SkillRepository skillRepository;
 
-
     public MasterDataController(CityRepository cityRepository, LocalityRepository localityRepository,
-                                JobRoleRepository jobRoleRepository, SkillRepository skillRepository) {
+            JobRoleRepository jobRoleRepository, SkillRepository skillRepository) {
         this.cityRepository = cityRepository;
         this.localityRepository = localityRepository;
         this.jobRoleRepository = jobRoleRepository;
