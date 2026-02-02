@@ -1,0 +1,850 @@
+{
+  "info": {
+    "_postman_id": "profile-module-2026",
+    "name": "Profile Module",
+    "description": "Profile Management API endpoints for SortOut Jobs platform.\n\n**Base URL**: `http://localhost:8080`\n\n**Authentication**: Bearer Token required for all endpoints.\n\n**Test User**: \n- Phone: +918808319836\n- User ID: 17",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Full Profile",
+      "item": [
+        {
+          "name": "Get Full Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}"]
+            },
+            "description": "Get complete profile with all details including personal info, employments, educations, projects, IT skills, etc."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"John Doe\",\n    \"profilePicture\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}"]
+            },
+            "description": "Update basic profile information"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for managing the complete user profile"
+    },
+    {
+      "name": "Personal Details",
+      "item": [
+        {
+          "name": "Get Personal Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/personal-details",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "personal-details"]
+            },
+            "description": "Get personal details like DOB, gender, marital status, address, etc."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Personal Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dateOfBirth\": \"1995-05-15\",\n    \"gender\": \"MALE\",\n    \"maritalStatus\": \"SINGLE\",\n    \"category\": \"GENERAL\",\n    \"differentlyAbled\": false,\n    \"careerBreak\": false,\n    \"permanentAddress\": \"123 Main Street, City\",\n    \"hometown\": \"Mumbai\",\n    \"pincode\": \"400001\",\n    \"languages\": [\"English\", \"Hindi\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/personal-details",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "personal-details"]
+            },
+            "description": "Update personal details"
+          },
+          "response": []
+        }
+      ],
+      "description": "Manage personal details section of profile"
+    },
+    {
+      "name": "Headline & Summary",
+      "item": [
+        {
+          "name": "Update Resume Headline",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"Experienced Software Developer | Java, Spring Boot, React | 5+ Years Experience\""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/headline",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "headline"]
+            },
+            "description": "Update the resume headline (short professional tagline)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile Summary",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"Passionate software developer with 5+ years of experience in building scalable web applications. Proficient in Java, Spring Boot, React, and cloud technologies. Strong problem-solving skills with a focus on clean code and best practices.\""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "summary"]
+            },
+            "description": "Update the profile summary (detailed professional description)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Manage resume headline and profile summary"
+    },
+    {
+      "name": "Employments",
+      "item": [
+        {
+          "name": "Get All Employments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/employments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "employments"]
+            },
+            "description": "Get all employment records for the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Employment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"designation\": \"Software Engineer\",\n    \"organization\": \"Tech Corporation\",\n    \"isCurrentEmployment\": true,\n    \"startDate\": \"2020-01-15\",\n    \"endDate\": null,\n    \"jobProfile\": \"Full stack development using Java, Spring Boot, and React\",\n    \"noticePeriod\": \"30 days\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/employments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "employments"]
+            },
+            "description": "Add a new employment record"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Employment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"designation\": \"Senior Software Engineer\",\n    \"organization\": \"Tech Corporation\",\n    \"isCurrentEmployment\": true,\n    \"startDate\": \"2020-01-15\",\n    \"endDate\": null,\n    \"jobProfile\": \"Leading full stack development team\",\n    \"noticePeriod\": \"60 days\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/employments/{{employmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "employments",
+                "{{employmentId}}"
+              ]
+            },
+            "description": "Update an existing employment record"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Employment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/employments/{{employmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "employments",
+                "{{employmentId}}"
+              ]
+            },
+            "description": "Delete an employment record"
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD operations for employment history"
+    },
+    {
+      "name": "Educations",
+      "item": [
+        {
+          "name": "Get All Educations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/educations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "educations"]
+            },
+            "description": "Get all education records for the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Education",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"educationLevel\": \"GRADUATION\",\n    \"course\": \"B.Tech\",\n    \"specialization\": \"Computer Science\",\n    \"university\": \"Indian Institute of Technology\",\n    \"courseType\": \"FULL_TIME\",\n    \"passingYear\": 2018,\n    \"gradingSystem\": \"CGPA\",\n    \"marks\": \"8.5\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/educations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "educations"]
+            },
+            "description": "Add a new education record"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Education",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"educationLevel\": \"GRADUATION\",\n    \"course\": \"B.Tech\",\n    \"specialization\": \"Computer Science\",\n    \"university\": \"Indian Institute of Technology Delhi\",\n    \"courseType\": \"FULL_TIME\",\n    \"passingYear\": 2018,\n    \"gradingSystem\": \"CGPA\",\n    \"marks\": \"9.0\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/educations/{{educationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "educations",
+                "{{educationId}}"
+              ]
+            },
+            "description": "Update an existing education record"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Education",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/educations/{{educationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "educations",
+                "{{educationId}}"
+              ]
+            },
+            "description": "Delete an education record"
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD operations for education history"
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "projects"]
+            },
+            "description": "Get all project records for the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"E-Commerce Platform\",\n    \"description\": \"Built a full-stack e-commerce platform with microservices architecture\",\n    \"status\": \"FINISHED\",\n    \"startDate\": \"2021-01-01\",\n    \"endDate\": \"2021-06-30\",\n    \"projectUrl\": \"https://github.com/user/ecommerce-platform\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "projects"]
+            },
+            "description": "Add a new project"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"title\": \"E-Commerce Platform v2\",\n    \"description\": \"Enhanced e-commerce platform with advanced features\",\n    \"status\": \"FINISHED\",\n    \"startDate\": \"2021-01-01\",\n    \"endDate\": \"2021-12-31\",\n    \"projectUrl\": \"https://github.com/user/ecommerce-platform-v2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "projects",
+                "{{projectId}}"
+              ]
+            },
+            "description": "Update an existing project"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "projects",
+                "{{projectId}}"
+              ]
+            },
+            "description": "Delete a project"
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD operations for projects"
+    },
+    {
+      "name": "IT Skills",
+      "item": [
+        {
+          "name": "Get All IT Skills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/it-skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "it-skills"]
+            },
+            "description": "Get all IT skill records for the user"
+          },
+          "response": []
+        },
+        {
+          "name": "Add IT Skill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"skillName\": \"Java\",\n    \"version\": \"17\",\n    \"lastUsed\": \"2024\",\n    \"experienceMonths\": 60\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/it-skills",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "it-skills"]
+            },
+            "description": "Add a new IT skill"
+          },
+          "response": []
+        },
+        {
+          "name": "Update IT Skill",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"skillName\": \"Java\",\n    \"version\": \"21\",\n    \"lastUsed\": \"2025\",\n    \"experienceMonths\": 72\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/it-skills/{{skillId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "it-skills",
+                "{{skillId}}"
+              ]
+            },
+            "description": "Update an existing IT skill"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete IT Skill",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/it-skills/{{skillId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "profile",
+                "{{userId}}",
+                "it-skills",
+                "{{skillId}}"
+              ]
+            },
+            "description": "Delete an IT skill"
+          },
+          "response": []
+        }
+      ],
+      "description": "CRUD operations for IT skills"
+    },
+    {
+      "name": "Resume",
+      "item": [
+        {
+          "name": "Upload Resume",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "resume"]
+            },
+            "description": "Upload a resume file (PDF, DOC, DOCX)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Resume",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "resume"]
+            },
+            "description": "Delete the uploaded resume"
+          },
+          "response": []
+        }
+      ],
+      "description": "Resume upload and management"
+    },
+    {
+      "name": "Password & Phone",
+      "item": [
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"currentPassword\": \"oldPassword123\",\n    \"newPassword\": \"newSecurePassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "change-password"]
+            },
+            "description": "Change user password"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Phone Link OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"+919876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/link-phone/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "link-phone", "send-otp"]
+            },
+            "description": "Send OTP to link a new phone number"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify & Link Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"phone\": \"+919876543210\",\n    \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profile/{{userId}}/link-phone/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profile", "{{userId}}", "link-phone", "verify"]
+            },
+            "description": "Verify OTP and link phone number to account"
+          },
+          "response": []
+        }
+      ],
+      "description": "Password management and phone linking"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "17",
+      "type": "string"
+    },
+    {
+      "key": "employmentId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "educationId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "skillId",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}
