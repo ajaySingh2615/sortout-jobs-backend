@@ -15,6 +15,6 @@ public class UserRegistrationRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    @NotBlank(message = "Role is required")
+    /** Optional. Allowed: JOB_SEEKER, RECRUITER. ADMIN cannot be set via registration. Defaults to JOB_SEEKER if null/blank. */
     private String role;
 }

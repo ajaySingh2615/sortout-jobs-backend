@@ -22,7 +22,7 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    private String role; // e.g., "JOB_SEEKER", "RECRUITER"
+    private String role; // e.g., "JOB_SEEKER", "RECRUITER", "ADMIN"
 
     private AuthProvider authProvider = AuthProvider.LOCAL;
 

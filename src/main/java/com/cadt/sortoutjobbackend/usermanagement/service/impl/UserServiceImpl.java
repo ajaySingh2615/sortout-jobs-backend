@@ -41,13 +41,24 @@ public class UserServiceImpl implements UserService {
 
 
 
+    private static final List<String> ALLOWED_REGISTRATION_ROLES = List.of("JOB_SEEKER", "RECRUITER");
+
     @Override
     public UserDTO createUser(UserRegistrationRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ApiException(ErrorCode.USER_EMAIL_EXISTS);
         }
 
+        // Only JOB_SEEKER and RECRUITER can be set via registration; ADMIN cannot
+        String role = (request.getRole() != null && !request.getRole().isBlank())
+                ? request.getRole().trim().toUpperCase()
+                : "JOB_SEEKER";
+        if ("ADMIN".equals(role) || !ALLOWED_REGISTRATION_ROLES.contains(role)) {
+            role = "JOB_SEEKER";
+        }
+
         User user = userMapper.toEntity(request);
+        user.setRole(role);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userRepository.save(user);
 
