@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -38,8 +41,15 @@ public class User {
     @Column
     private Boolean emailVerified = false;
 
+    @Column
+    private Boolean isActive = true;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+
     // Email Change Process
     private String pendingEmail;
     private String emailChangeOtp;
-    private java.time.Instant emailChangeOtpExpiry;
+    private Instant emailChangeOtpExpiry;
 }
