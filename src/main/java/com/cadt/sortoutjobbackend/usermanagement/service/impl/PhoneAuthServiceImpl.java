@@ -95,6 +95,11 @@ public class PhoneAuthServiceImpl implements PhoneAuthService {
                     return userRepository.save(newUser);
                 });
 
+        // Check if existing user account is disabled
+        if (!isNewUser[0] && Boolean.FALSE.equals(user.getIsActive())) {
+            throw new ApiException(ErrorCode.AUTH_ACCOUNT_DISABLED);
+        }
+
         // Generate tokens
         String accessToken = jwtTokenProvider.generateToken(user.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());

@@ -14,6 +14,7 @@ public enum ErrorCode {
     AUTH_ACCOUNT_LOCKED("AUTH_005", "Account is locked", HttpStatus.FORBIDDEN),
     AUTH_USE_OAUTH("AUTH_006", "This account uses Google or Phone login. Please use the original method.", HttpStatus.BAD_REQUEST),
     AUTH_ALREADY_VERIFIED("AUTH_007", "Email already verified", HttpStatus.BAD_REQUEST),
+    AUTH_ACCOUNT_DISABLED("AUTH_008", "Your account has been disabled. Please contact support.", HttpStatus.FORBIDDEN),
 
     // User Errors (USER_xxx)
     USER_NOT_FOUND("USER_001", "User not found", HttpStatus.NOT_FOUND),

@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -80,6 +82,15 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     newUser.setEmailVerified(true); // Google already verified
                     return userRepository.save(newUser);
                 });
+
+        // Check if existing user account is disabled
+        if (!isNewUser && Boolean.FALSE.equals(user.getIsActive())) {
+            String errorUrl = UriComponentsBuilder.fromUriString(redirectUrl)
+                    .queryParam("error", URLEncoder.encode("Your account has been disabled. Please contact support.", StandardCharsets.UTF_8))
+                    .build().toUriString();
+            getRedirectStrategy().sendRedirect(request, response, errorUrl);
+            return;
+        }
 
         // Send welcome email for new users
         if (isNewUser) {

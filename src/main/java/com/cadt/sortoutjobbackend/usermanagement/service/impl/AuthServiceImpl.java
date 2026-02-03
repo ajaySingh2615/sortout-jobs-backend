@@ -67,6 +67,11 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ApiException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
+        // Check if user account is disabled
+        if (Boolean.FALSE.equals(user.getIsActive())) {
+            throw new ApiException(ErrorCode.AUTH_ACCOUNT_DISABLED);
+        }
+
         // Check if user registered with OAuth/Phone - they can't use password login
         if (user.getPassword() == null || user.getPassword().isEmpty()) {
             throw new ApiException(ErrorCode.AUTH_USE_OAUTH);
@@ -97,6 +102,13 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ApiException(ErrorCode.TOKEN_NOT_FOUND));
 
         refreshTokenService.verifyExpiration(refreshToken);
+
+        // Check if user account is disabled
+        if (Boolean.FALSE.equals(refreshToken.getUser().getIsActive())) {
+            // Delete refresh tokens for disabled user
+            refreshTokenService.deleteByUserId(refreshToken.getUser().getId());
+            throw new ApiException(ErrorCode.AUTH_ACCOUNT_DISABLED);
+        }
 
         String newAccessToken = jwtTokenProvider.generateToken(refreshToken.getUser().getEmail());
 
