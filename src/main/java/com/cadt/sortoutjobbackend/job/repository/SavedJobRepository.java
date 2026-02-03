@@ -4,6 +4,7 @@ import com.cadt.sortoutjobbackend.job.entity.SavedJob;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,12 @@ import java.util.Optional;
 
 @Repository
 public interface SavedJobRepository extends JpaRepository<SavedJob, Long> {
+
+    void deleteByUser_Id(Long userId);
+
+    @Modifying
+    @Query("DELETE FROM SavedJob sj WHERE sj.job.id IN :jobIds")
+    void deleteByJob_IdIn(@Param("jobIds") List<Long> jobIds);
 
     // Find all saved jobs by user
     Page<SavedJob> findByUserIdOrderBySavedAtDesc(Long userId, Pageable pageable);

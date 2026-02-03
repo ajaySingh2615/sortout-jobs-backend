@@ -2,8 +2,10 @@ package com.cadt.sortoutjobbackend.usermanagement.service.impl;
 
 import com.cadt.sortoutjobbackend.common.exception.ApiException;
 import com.cadt.sortoutjobbackend.common.exception.ErrorCode;
+import com.cadt.sortoutjobbackend.job.entity.Job;
 import com.cadt.sortoutjobbackend.job.entity.JobApplication;
 import com.cadt.sortoutjobbackend.job.repository.JobApplicationRepository;
+import com.cadt.sortoutjobbackend.job.repository.JobRepository;
 import com.cadt.sortoutjobbackend.job.repository.SavedJobRepository;
 import com.cadt.sortoutjobbackend.onboarding.entity.UserPreferences;
 import com.cadt.sortoutjobbackend.onboarding.entity.UserProfile;
@@ -39,6 +41,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenService refreshTokenService;
     private final JobApplicationRepository jobApplicationRepository;
+    private final JobRepository jobRepository;
     private final SavedJobRepository savedJobRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserPreferencesRepository userPreferencesRepository;
@@ -302,10 +305,22 @@ public class AdminUserServiceImpl implements AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
 
-        // Delete related data - let cascade handle most, but ensure sessions are cleared
+        // Clear sessions
         refreshTokenService.deleteAllByUserId(userId);
 
-        // Delete the user (cascades will handle related entities if configured)
+        // Jobs posted by this user: remove applications and saved refs, then delete jobs
+        List<Job> jobsPostedByUser = jobRepository.findByPostedByIdOrderByPostedAtDesc(userId, Pageable.unpaged()).getContent();
+        if (!jobsPostedByUser.isEmpty()) {
+            List<Long> jobIds = jobsPostedByUser.stream().map(Job::getId).collect(Collectors.toList());
+            jobApplicationRepository.deleteByJob_IdIn(jobIds);
+            savedJobRepository.deleteByJob_IdIn(jobIds);
+            jobRepository.deleteAll(jobsPostedByUser);
+        }
+
+        // This user's applications and saved jobs
+        jobApplicationRepository.deleteByUser_Id(userId);
+        savedJobRepository.deleteByUser_Id(userId);
+
         userRepository.delete(user);
     }
 

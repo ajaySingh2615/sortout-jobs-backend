@@ -5,6 +5,7 @@ import com.cadt.sortoutjobbackend.job.entity.JobApplication;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,12 @@ import java.util.Optional;
 
 @Repository
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Long> {
+
+    void deleteByUser_Id(Long userId);
+
+    @Modifying
+    @Query("DELETE FROM JobApplication ja WHERE ja.job.id IN :jobIds")
+    void deleteByJob_IdIn(@Param("jobIds") List<Long> jobIds);
 
     // Find all applications by user
     Page<JobApplication> findByUserIdOrderByAppliedAtDesc(Long userId, Pageable pageable);
