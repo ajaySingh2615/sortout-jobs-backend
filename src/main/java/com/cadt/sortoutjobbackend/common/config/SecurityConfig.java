@@ -69,6 +69,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/profile/**").authenticated()
                         .requestMatchers("/api/master/**").permitAll()
                         .requestMatchers("/api/onboarding/**").authenticated()
+                        // Job browsing - public access
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/jobs/{id}").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/jobs/search").permitAll()
+                        // Job user-specific endpoints - authenticated
+                        .requestMatchers("/api/jobs/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

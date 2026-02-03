@@ -48,6 +48,7 @@ public enum ErrorCode {
     // Resource Errors (RESOURCE_xxx)
     RESOURCE_NOT_FOUND("RESOURCE_001", "Resource not found", HttpStatus.NOT_FOUND),
     UNAUTHORIZED("RESOURCE_002", "You are not authorized to access this resource", HttpStatus.FORBIDDEN),
+    RESOURCE_CONFLICT("RESOURCE_003", "Resource already exists", HttpStatus.CONFLICT),
 
     // RATE LIMIT ERRORS
     RATE_LIMIT_EXCEEDED("RATE_001", "Too many requests. Please try again later.",
