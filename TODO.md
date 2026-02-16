@@ -14,8 +14,8 @@ Done = ✓ | Not done = leave blank
 | ✓ | M0-4 — .env + src/config/env.ts |
 | ✓ | M0-5 — src/db/index.ts (Drizzle client + testConnection) |
 | ✓ | M0-6 — Utils (apiError, apiResponse, asyncHandler) |
-| | M0-7 — src/middlewares/error.middleware.ts |
-| | M0-8 — src/app.ts + src/index.ts (server running) |
+| ✓ | M0-7 — src/middlewares/error.middleware.ts |
+| ✓ | M0-8 — src/app.ts + src/index.ts (server running) |
 
 ---
 

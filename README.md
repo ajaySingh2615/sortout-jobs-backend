@@ -65,7 +65,7 @@ sortout-backend/
 
 | #   | Module          | Status      | Description                                              |
 |-----|-----------------|-------------|----------------------------------------------------------|
-| 0   | Project Init    | In Progress | Docker, deps, config, DB client, utils done; error middleware, app + server next |
+| 0   | Project Init    | Done        | Docker, deps, config, DB client, utils, error middleware, server running |
 | 1   | User Management | Not Started | Register, login, JWT, refresh, me, email verify, OTP, Google |
 | 2   | Onboarding      | Future      | Post-signup flow, role selection                         |
 | 3   | Profile         | Future      | User profile CRUD, resume, skills                        |
