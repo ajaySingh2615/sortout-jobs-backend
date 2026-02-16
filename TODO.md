@@ -8,12 +8,12 @@ Done = ✓ | Not done = leave blank
 
 | Done | Task |
 |:---:|------|
-| | M0-1 — docker-compose.yml (PostgreSQL 16) |
-| | M0-2 — npm init + install all dependencies |
-| | M0-3 — tsconfig.json |
-| | M0-4 — .env + src/config/env.ts |
-| | M0-5 — src/db/index.ts (Drizzle client + testConnection) |
-| | M0-6 — Utils (apiError, apiResponse, asyncHandler) |
+| ✓ | M0-1 — docker-compose.yml (PostgreSQL 16) |
+| ✓ | M0-2 — npm init + install all dependencies |
+| ✓ | M0-3 — tsconfig.json |
+| ✓ | M0-4 — .env + src/config/env.ts |
+| ✓ | M0-5 — src/db/index.ts (Drizzle client + testConnection) |
+| ✓ | M0-6 — Utils (apiError, apiResponse, asyncHandler) |
 | | M0-7 — src/middlewares/error.middleware.ts |
 | | M0-8 — src/app.ts + src/index.ts (server running) |
 
