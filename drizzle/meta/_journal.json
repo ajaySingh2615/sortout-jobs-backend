@@ -8,6 +8,13 @@
       "when": 1771267860365,
       "tag": "0000_lucky_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771268000000,
+      "tag": "0001_rename_password_hash",
+      "breakpoints": true
     }
   ]
 }

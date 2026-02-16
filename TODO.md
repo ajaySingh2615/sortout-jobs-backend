@@ -31,19 +31,19 @@ Done = ✓ | Not done = leave blank
 | ✓ | M1-6 — Auth controller (register, login, logout, refresh, me) |
 | ✓ | M1-7 — Auth router + mount at /api/auth |
 | ✓ | M1-8 — Auth middleware (requireAuth on /me) |
-| | M1-9 — Test all 5 Phase 1 routes |
+| ✓ | M1-9 — Test all 5 Phase 1 routes |
 
 ---
 
-## Module 1 — User Management (Phase 2-5: Later)
+## Module 1 — User Management (Phase 1 hardening + Phases 2–5)
 
 | Done | Task |
 |:---:|------|
-| | M1-10 — Phase 2: Email verification (verify-email, resend) |
-| | M1-11 — Phase 3: Forgot / reset password |
-| | M1-12 — Phase 4: OTP login (request + verify) |
-| | M1-13 — Phase 5: Google OAuth |
-| | M1-14 — Rate limiting on auth routes |
+| | M1-10 — Phase 1 hardening (cookie path/secure, JWT type) + rate limiting |
+| | M1-11 — Phase 2: Email verification (verify-email, resend) |
+| | M1-12 — Phase 3: Forgot / reset password |
+| | M1-13 — Phase 4: OTP login (request + verify) |
+| | M1-14 — Phase 5: Google OAuth |
 
 ---
 

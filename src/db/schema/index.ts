@@ -4,7 +4,7 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password-hash", { length: 255 }),
+  passwordHash: varchar("password_hash", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   avatarUrl: varchar("avatar_url", { length: 512 }),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

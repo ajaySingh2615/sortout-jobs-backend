@@ -1,0 +1,226 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import request from "supertest";
+import app from "../../src/app.js";
+
+const BASE = "/api/auth";
+
+function uniqueEmail() {
+  return `test-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@test.com`;
+}
+
+describe("POST /api/auth/register", () => {
+  it("returns 201 with user and accessToken when body is valid", async () => {
+    const email = uniqueEmail();
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "password123", name: "Test User" })
+      .expect(201);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.statusCode).toBe(201);
+    expect(res.body.message).toBe("Registered");
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.email).toBe(email);
+    expect(res.body.data.user.name).toBe("Test User");
+    expect(res.body.data.user.id).toBeDefined();
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.expiresIn).toBe("15m");
+    expect(res.headers["set-cookie"]).toBeDefined();
+    expect(res.headers["set-cookie"]?.some((c: string) => c.startsWith("refreshToken="))).toBe(true);
+  });
+
+  it("returns 400 when email is invalid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: "not-an-email", password: "password123", name: "Test" })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+    expect(Array.isArray(res.body.errors)).toBe(true);
+  });
+
+  it("returns 400 when password is too short", async () => {
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: "a@b.com", password: "short", name: "Test" })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+
+  it("returns 400 when name is missing", async () => {
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: "a@b.com", password: "password123" })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+
+  it("returns 409 when email already registered", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "password123", name: "First" })
+      .expect(201);
+
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "otherpass123", name: "Second" })
+      .expect(409);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Email already registered");
+  });
+});
+
+describe("POST /api/auth/login", () => {
+  const loginEmail = uniqueEmail();
+  const loginPassword = "loginpass123";
+
+  beforeAll(async () => {
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: loginEmail, password: loginPassword, name: "Login User" })
+      .expect(201);
+  });
+
+  it("returns 200 with user and accessToken when credentials are valid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/login`)
+      .send({ email: loginEmail, password: loginPassword })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.user.email).toBe(loginEmail);
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.headers["set-cookie"]).toBeDefined();
+  });
+
+  it("returns 400 when body is invalid (missing email)", async () => {
+    const res = await request(app)
+      .post(`${BASE}/login`)
+      .send({ password: loginPassword })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+
+  it("returns 401 when password is wrong", async () => {
+    const res = await request(app)
+      .post(`${BASE}/login`)
+      .send({ email: loginEmail, password: "wrongpassword" })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid email or password");
+  });
+
+  it("returns 401 when email is not registered", async () => {
+    const res = await request(app)
+      .post(`${BASE}/login`)
+      .send({ email: "never-registered@test.com", password: "anypass123" })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid email or password");
+  });
+});
+
+describe("GET /api/auth/me", () => {
+  const meEmail = uniqueEmail();
+  const mePassword = "mepass123";
+  let accessToken: string;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: meEmail, password: mePassword, name: "Me User" })
+      .expect(201);
+    accessToken = res.body.data.accessToken;
+  });
+
+  it("returns 200 with user when Authorization Bearer is valid", async () => {
+    const res = await request(app)
+      .get(`${BASE}/me`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.email).toBe(meEmail);
+  });
+
+  it("returns 401 when no token is provided", async () => {
+    const res = await request(app).get(`${BASE}/me`).expect(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Unauthorized");
+  });
+
+  it("returns 401 when token is invalid", async () => {
+    const res = await request(app)
+      .get(`${BASE}/me`)
+      .set("Authorization", "Bearer invalid-token-here")
+      .expect(401);
+    expect(res.body.success).toBe(false);
+  });
+});
+
+describe("POST /api/auth/refresh", () => {
+  it("returns 200 with new accessToken when refresh cookie is valid", async () => {
+    const email = uniqueEmail();
+    const agent = request.agent(app);
+    await agent
+      .post(`${BASE}/register`)
+      .send({ email, password: "refreshpass123", name: "Refresh User" })
+      .expect(201);
+
+    const res = await agent.post(`${BASE}/refresh`).expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.user).toBeDefined();
+    expect(res.headers["set-cookie"]).toBeDefined();
+  });
+
+  it("returns 401 when no refresh token is sent", async () => {
+    const res = await request(app).post(`${BASE}/refresh`).expect(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Refresh token required");
+  });
+
+  it("returns 401 when refresh token is invalid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/refresh`)
+      .set("Cookie", "refreshToken=invalid-refresh-token")
+      .expect(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Invalid or expired refresh token");
+  });
+});
+
+describe("POST /api/auth/logout", () => {
+  it("returns 200 and clears cookie when called with refresh cookie", async () => {
+    const email = uniqueEmail();
+    const agent = request.agent(app);
+    await agent
+      .post(`${BASE}/register`)
+      .send({ email, password: "logoutpass123", name: "Logout User" })
+      .expect(201);
+
+    const res = await agent.post(`${BASE}/logout`).expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Logged out");
+    expect(res.body.data).toBeNull();
+  });
+
+  it("returns 200 when called without cookie (idempotent)", async () => {
+    const res = await request(app).post(`${BASE}/logout`).expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Logged out");
+  });
+});
