@@ -23,8 +23,8 @@ Done = ✓ | Not done = leave blank
 
 | Done | Task |
 |:---:|------|
-| | M1-1 — Drizzle schema (users, refresh_tokens, auth_tokens) |
-| | M1-2 — drizzle.config.ts + generate & run migration |
+| ✓ | M1-1 — Drizzle schema (users, refresh_tokens, auth_tokens) |
+| ✓ | M1-2 — drizzle.config.ts + generate & run migration |
 | | M1-3 — Zod schemas (user.types.ts) |
 | | M1-4 — Token service (JWT + refresh) |
 | | M1-5 — User service (register, login, getById) |
