@@ -25,12 +25,12 @@ Done = ✓ | Not done = leave blank
 |:---:|------|
 | ✓ | M1-1 — Drizzle schema (users, refresh_tokens, auth_tokens) |
 | ✓ | M1-2 — drizzle.config.ts + generate & run migration |
-| | M1-3 — Zod schemas (user.types.ts) |
-| | M1-4 — Token service (JWT + refresh) |
-| | M1-5 — User service (register, login, getById) |
-| | M1-6 — Auth controller (register, login, logout, refresh, me) |
-| | M1-7 — Auth router + mount at /api/auth |
-| | M1-8 — Auth middleware (requireAuth on /me) |
+| ✓ | M1-3 — Zod schemas (user.types.ts) |
+| ✓ | M1-4 — Token service (JWT + refresh) |
+| ✓ | M1-5 — User service (register, login, getById) |
+| ✓ | M1-6 — Auth controller (register, login, logout, refresh, me) |
+| ✓ | M1-7 — Auth router + mount at /api/auth |
+| ✓ | M1-8 — Auth middleware (requireAuth on /me) |
 | | M1-9 — Test all 5 Phase 1 routes |
 
 ---
