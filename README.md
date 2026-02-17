@@ -1,6 +1,6 @@
 # SortOut Jobs Backend
 
-A job platform backend (JobHai / Naukri style) — Node.js, TypeScript, Express, Drizzle ORM, PostgreSQL.
+A job platform backend (Naukri style) — Node.js, TypeScript, Express, Drizzle ORM, PostgreSQL.
 
 ---
 
@@ -9,14 +9,18 @@ A job platform backend (JobHai / Naukri style) — Node.js, TypeScript, Express,
 | Layer       | Technology                          |
 |-------------|-------------------------------------|
 | Runtime     | Node.js + TypeScript (ESM)          |
-| Framework   | Express 5.x                         |
+| Framework   | Express 4.x                         |
 | Database    | PostgreSQL 16 (Docker)               |
 | ORM         | Drizzle ORM + postgres.js           |
-| Validation  | Zod v4                              |
+| Validation  | Zod                                 |
 | Auth        | JWT (jsonwebtoken) + bcryptjs       |
+| File Upload | Multer                              |
 | Security    | Helmet, CORS, cookie-parser         |
+| Email       | Resend API                          |
+| SMS/OTP     | Twilio                              |
 | Logging     | Morgan                              |
 | Dev Tools   | tsx (watch mode), drizzle-kit        |
+| Testing     | Vitest + Supertest                  |
 
 ---
 
@@ -24,56 +28,102 @@ A job platform backend (JobHai / Naukri style) — Node.js, TypeScript, Express,
 
 ```
 sortout-backend/
-├── TODO.md                               # Task tracker (done / not done)
-├── README.md                             # You are here
-├── .env / .env.example
-├── .gitignore
-├── docker-compose.yml                    # PostgreSQL 16 (Docker)
-├── Dockerfile
-├── .dockerignore
-├── drizzle.config.ts                     # Drizzle Kit migration config
-├── package.json                          # ESM, scripts, dependencies
-├── tsconfig.json                         # ES2022, strict, @/* alias
+├── README.md
+├── package.json
+├── tsconfig.json
+├── drizzle.config.ts
+├── docker-compose.yml
+├── uploads/resumes/               # Uploaded resume files
+├── drizzle/                       # SQL migration files
+├── testing-routes/                # Vitest tests + Postman collection
+│   ├── postman-collection.json
+│   ├── README.md
+│   └── module/
+│       ├── auth.routes.test.ts
+│       ├── master-data.routes.test.ts
+│       ├── onboarding.routes.test.ts
+│       ├── profile.routes.test.ts
+│       └── jobs.routes.test.ts
 └── src/
-    ├── index.ts                          # Server entry (DB test + listen)
-    ├── app.ts                            # Express app + middleware
+    ├── index.ts                   # Server entry
+    ├── app.ts                     # Express app + all route mounts
     ├── config/
-    │   └── env.ts                        # Zod-validated environment vars
+    │   └── env.ts                 # Zod-validated environment vars
     ├── db/
-    │   ├── index.ts                      # Drizzle client + testConnection()
+    │   ├── index.ts               # Drizzle client + testConnection()
+    │   ├── seed.ts                # Master data + sample jobs seeder
     │   └── schema/
-    │       └── index.ts                  # Tables: users, refresh_tokens, auth_tokens
+    │       └── index.ts           # All tables + relations
     ├── utils/
-    │   ├── apiError.ts                   # Custom error class (statusCode + message)
-    │   ├── apiResponse.ts                # Standardized JSON response
-    │   └── asyncHandler.ts               # Async route wrapper (catches errors)
+    │   ├── apiError.ts
+    │   ├── apiResponse.ts
+    │   └── asyncHandler.ts
     ├── middlewares/
-    │   ├── error.middleware.ts           # Global error handler
-    │   └── auth.middleware.ts            # requireAuth (JWT Bearer -> req.user)
+    │   ├── error.middleware.ts
+    │   ├── auth.middleware.ts      # requireAuth (JWT)
+    │   └── admin.middleware.ts     # requireAdmin (role check)
     └── modules/
-        └── user-management/
-            ├── user.types.ts             # Zod schemas (register, login, responses)
-            ├── user.service.ts           # register, login, getById, getByEmail
-            ├── token.service.ts          # JWT + refresh token (issue, verify, rotate)
-            ├── auth.controller.ts        # Route handlers
-            ├── auth.router.ts            # Express router -> /api/auth
-            ├── email.service.ts          # Resend API (verification + password reset emails)
-            ├── googleAuth.service.ts     # Google id_token verification
-            ├── twilio.service.ts         # Twilio SMS OTP delivery
-            └── rate-limit.ts             # Rate limiters (auth, OTP)
+        ├── user-management/       # Module 1: Auth
+        │   ├── user.types.ts
+        │   ├── user.service.ts
+        │   ├── token.service.ts
+        │   ├── auth.controller.ts
+        │   ├── auth.router.ts
+        │   ├── email.service.ts
+        │   ├── googleAuth.service.ts
+        │   ├── twilio.service.ts
+        │   └── rate-limit.ts
+        ├── master-data/           # Module 2: Master Data
+        │   ├── master.service.ts
+        │   ├── master.controller.ts
+        │   └── master.router.ts
+        ├── onboarding/            # Module 2: Onboarding
+        │   ├── onboarding.types.ts
+        │   ├── onboarding.service.ts
+        │   ├── onboarding.controller.ts
+        │   └── onboarding.router.ts
+        ├── profile/               # Module 3: Profile
+        │   ├── profile.types.ts
+        │   ├── profile.service.ts
+        │   ├── profile.controller.ts
+        │   └── profile.router.ts
+        ├── jobs/                  # Module 4: Jobs
+        │   ├── jobs.types.ts
+        │   ├── jobs.service.ts
+        │   ├── jobs.controller.ts
+        │   └── jobs.router.ts
+        └── admin/                 # Module 4: Admin
+            ├── admin.controller.ts
+            └── admin.router.ts
 ```
 
 ---
 
 ## Modules
 
-| #   | Module          | Status      | Description                                              |
-|-----|-----------------|-------------|----------------------------------------------------------|
-| 0   | Project Init    | Done        | Docker, deps, config, DB client, utils, error middleware, server running |
-| 1   | User Management | Done        | Register, login, JWT, refresh, me, email verify, forgot/reset password, OTP, Google OAuth, identity linking |
-| 2   | Onboarding      | Future      | Post-signup flow, role selection                         |
-| 3   | Profile         | Future      | User profile CRUD, resume, skills                        |
-| 4   | Job Listings    | Future      | Create, search, filter, apply                             |
+| # | Module | Status | Description |
+|---|--------|--------|-------------|
+| 0 | Project Init | Done | Docker, deps, config, DB, utils, error middleware |
+| 1 | User Management | Done | Register, login, JWT, refresh, email verify, password reset, OTP, Google OAuth, identity linking |
+| 2 | Onboarding + Master Data | Done | Cities, localities, job roles, skills, 5-step onboarding profile+preferences |
+| 3 | Profile | Done | Full profile CRUD (personal details, employment, education, projects, IT skills, resume upload) |
+| 4 | Jobs + Dashboard + Admin | Done | Job listing, search, recommendations, save/unsave, apply, dashboard stats, admin CRUD |
+
+---
+
+## Database Tables (18 total)
+
+### Auth (Module 1)
+- `users`, `refresh_tokens`, `auth_tokens`
+
+### Master Data (Module 2)
+- `cities`, `localities`, `job_roles`, `skills`
+
+### Profiles (Module 2+3)
+- `profiles`, `profile_skills`, `personal_details`, `employments`, `educations`, `projects`, `it_skills`, `resumes`
+
+### Jobs (Module 4)
+- `jobs`, `job_skills`, `saved_jobs`, `applications`
 
 ---
 
@@ -93,31 +143,29 @@ npm install
 
 ### 3. Set up environment
 
-Copy `.env.example` to `.env` and fill in your values:
+Copy `.env.example` to `.env` and fill in:
 
 ```
 PORT=8000
 NODE_ENV=development
 DATABASE_URL=postgresql://sortout_user:sortout_pass@localhost:5432/sortout_jobs
 ACCESS_TOKEN_SECRET=<long-random-string>
-ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_SECRET=<long-random-string>
-REFRESH_TOKEN_EXPIRY=7d
 CORS_ORIGIN=http://localhost:3000
 FRONTEND_URL=http://localhost:3000
 RESEND_API_KEY=<resend-api-key>
 GOOGLE_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
-TWILIO_ACCOUNT_SID=<twilio-account-sid>
-TWILIO_AUTH_TOKEN=<twilio-auth-token>
-TWILIO_PHONE_NUMBER=<twilio-phone-number>
+TWILIO_ACCOUNT_SID=<twilio-sid>
+TWILIO_AUTH_TOKEN=<twilio-token>
+TWILIO_PHONE_NUMBER=<twilio-number>
 ```
 
-### 4. Run migrations
+### 4. Run migrations + seed
 
 ```bash
-npm run db:generate
 npm run db:migrate
+npm run db:seed
 ```
 
 ### 5. Start the server
@@ -130,56 +178,117 @@ Server runs on `http://localhost:8000`. Health check: `GET /health`.
 
 ---
 
-## API Routes — Module 1 (User Management)
+## API Endpoints (~55 total)
 
-### Core Auth
+### Module 1 — Auth (14 endpoints)
 
-| Method | Path                  | Auth | Description           |
-|--------|-----------------------|------|-----------------------|
-| POST   | /api/auth/register    | No   | Register (email + password) |
-| POST   | /api/auth/login       | No   | Login (email + password)    |
-| POST   | /api/auth/logout      | No   | Revoke refresh token  |
-| POST   | /api/auth/refresh     | No   | Rotate refresh token  |
-| GET    | /api/auth/me          | Yes  | Get current user      |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/auth/register | No | Register (email + password) |
+| POST | /api/auth/login | No | Login (email + password) |
+| POST | /api/auth/logout | No | Revoke refresh token |
+| POST | /api/auth/refresh | No | Rotate refresh token |
+| GET | /api/auth/me | Yes | Get current user |
+| POST | /api/auth/verify-email | No | Verify email token |
+| POST | /api/auth/resend-verify-email | No | Resend verify link |
+| POST | /api/auth/forgot-password | No | Send reset link |
+| POST | /api/auth/reset-password | No | Reset with token |
+| POST | /api/auth/request-otp | No | Send OTP to phone |
+| POST | /api/auth/verify-otp | No | Verify OTP + login/register |
+| POST | /api/auth/google | No | Google OAuth login |
+| POST | /api/auth/link-phone | Yes | Link phone to account |
+| POST | /api/auth/link-email | Yes | Link email to account |
 
-### Email Verification & Password Reset
+### Module 2 — Master Data + Onboarding (7 endpoints)
 
-| Method | Path                         | Auth | Description          |
-|--------|------------------------------|------|----------------------|
-| POST   | /api/auth/verify-email       | No   | Verify email token   |
-| POST   | /api/auth/resend-verify-email| No   | Resend verify link   |
-| POST   | /api/auth/forgot-password    | No   | Send reset link      |
-| POST   | /api/auth/reset-password     | No   | Reset with token     |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/master/cities | No | List all cities |
+| GET | /api/master/cities/:cityId/localities | No | Localities for a city |
+| GET | /api/master/roles | No | List all job roles |
+| GET | /api/master/roles/:roleId/skills | No | Skills for a role |
+| GET | /api/onboarding/status/:userId | Yes | Onboarding completion status |
+| POST | /api/onboarding/profile/:userId | Yes | Save basic profile |
+| POST | /api/onboarding/preferences/:userId | Yes | Save role + skills |
 
-### Phone OTP, Google OAuth & Identity Linking
+### Module 3 — Profile (24 endpoints)
 
-| Method | Path                    | Auth | Description                          |
-|--------|-------------------------|------|--------------------------------------|
-| POST   | /api/auth/request-otp   | No   | Send OTP to phone (Twilio SMS)       |
-| POST   | /api/auth/verify-otp    | No   | Verify OTP + login/register          |
-| POST   | /api/auth/google        | No   | Google OAuth login (id_token)        |
-| POST   | /api/auth/link-phone    | Yes  | Link phone to existing account       |
-| POST   | /api/auth/link-email    | Yes  | Link email + password to existing account |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/profile/:userId | Yes | Full profile (all sections) |
+| PUT | /api/profile/:userId | Yes | Update basic fields |
+| PUT | /api/profile/:userId/basic | Yes | Update basic fields (alias) |
+| PUT | /api/profile/:userId/headline | Yes | Update headline |
+| PUT | /api/profile/:userId/summary | Yes | Update summary |
+| GET | /api/profile/:userId/personal-details | Yes | Get personal details |
+| PUT | /api/profile/:userId/personal-details | Yes | Upsert personal details |
+| GET | /api/profile/:userId/employments | Yes | List employments |
+| POST | /api/profile/:userId/employments | Yes | Create employment |
+| PUT | /api/profile/:userId/employments/:id | Yes | Update employment |
+| DELETE | /api/profile/:userId/employments/:id | Yes | Delete employment |
+| GET | /api/profile/:userId/educations | Yes | List educations |
+| POST | /api/profile/:userId/educations | Yes | Create education |
+| PUT | /api/profile/:userId/educations/:id | Yes | Update education |
+| DELETE | /api/profile/:userId/educations/:id | Yes | Delete education |
+| GET | /api/profile/:userId/projects | Yes | List projects |
+| POST | /api/profile/:userId/projects | Yes | Create project |
+| PUT | /api/profile/:userId/projects/:id | Yes | Update project |
+| DELETE | /api/profile/:userId/projects/:id | Yes | Delete project |
+| GET | /api/profile/:userId/it-skills | Yes | List IT skills |
+| POST | /api/profile/:userId/it-skills | Yes | Create IT skill |
+| PUT | /api/profile/:userId/it-skills/:id | Yes | Update IT skill |
+| DELETE | /api/profile/:userId/it-skills/:id | Yes | Delete IT skill |
+| POST | /api/profile/:userId/resume | Yes | Upload resume (PDF/DOC/DOCX, 5MB) |
+| DELETE | /api/profile/:userId/resume | Yes | Delete resume |
+
+### Module 4 — Jobs + Dashboard (13 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/jobs | No | Paginated job list |
+| POST | /api/jobs/search | No | Search with filters |
+| GET | /api/jobs/:jobId | No | Job detail (+isSaved/isApplied) |
+| GET | /api/jobs/recommended/:userId | Yes | Recommended jobs |
+| POST | /api/jobs/:jobId/save/:userId | Yes | Save a job |
+| DELETE | /api/jobs/:jobId/save/:userId | Yes | Unsave a job |
+| GET | /api/jobs/saved/:userId | Yes | Saved jobs list |
+| GET | /api/jobs/saved/:userId/ids | Yes | Saved job IDs |
+| POST | /api/jobs/:jobId/apply/:userId | Yes | Apply to job |
+| GET | /api/jobs/applications/:userId | Yes | My applications |
+| GET | /api/jobs/applications/:userId/:id | Yes | Application detail |
+| GET | /api/jobs/applied/:userId/ids | Yes | Applied job IDs |
+| GET | /api/jobs/stats/:userId | Yes | Dashboard stats |
+
+### Module 4 — Admin (7 endpoints)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/admin/jobs/stats | Admin | Admin stats |
+| GET | /api/admin/jobs | Admin | List all jobs |
+| POST | /api/admin/jobs/:adminId | Admin | Create job |
+| PUT | /api/admin/jobs/:jobId | Admin | Update job |
+| DELETE | /api/admin/jobs/:jobId | Admin | Delete job |
+| PATCH | /api/admin/jobs/:jobId/status | Admin | Toggle active status |
+| PATCH | /api/admin/jobs/applications/:id/status | Admin | Update application status |
 
 ---
 
-## Auth Design
+## Testing
 
-- **Access token:** Short-lived JWT (15m), sent via `Authorization: Bearer <token>`.
-- **Refresh token:** Random 32-byte hex, SHA-256 hash stored in DB, raw value in httpOnly cookie.
-- **On refresh:** Old token deleted, new one issued (rotation).
-- **Cookie:** httpOnly, secure (prod), sameSite=lax, path=/api/auth, maxAge=7d.
-- **Passwords:** bcrypt (cost 10), min 8 characters.
-- **Three auth methods:** Phone OTP (primary), email/password, Google OAuth.
-- **Identity linking:** Users sign up via phone (email is null). They can later link email or Google to the same account via `/link-email` and `/link-phone`. No auto-linking at login — linking is explicit and user-initiated.
-- **`email` is nullable.** Phone-only users have `email: null`. The `provider` field tracks the last-used auth method.
+96 automated tests across 5 test files:
+
+```bash
+npm test      # run all 96 tests
+```
+
+See `testing-routes/README.md` for detailed coverage table.
 
 ---
 
-## Key Patterns
+## Seed Data
 
-1. One module at a time — complete and test before moving to next.
-2. Code provided in chat — you type it manually (learning by doing).
-3. Plan first, implement later — each module gets a detailed plan.
-4. Modular file structure — each module under `modules/<name>/`.
-5. Incremental complexity — start basic, level up as we go.
+The seed script (`npm run db:seed`) populates:
+
+- 20 Indian cities with 100 localities
+- 20 job roles with 146 skills
+- 25 sample jobs with skills from real companies (TCS, Infosys, Flipkart, Razorpay, etc.)

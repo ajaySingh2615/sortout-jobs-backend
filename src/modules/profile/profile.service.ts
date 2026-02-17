@@ -1,0 +1,468 @@
+import { eq, and } from "drizzle-orm";
+import { db } from "../../db/index.js";
+import {
+  profiles,
+  profileSkills,
+  personalDetails,
+  employments,
+  educations,
+  projects,
+  itSkills,
+  resumes,
+  skills,
+  cities,
+  localities,
+  jobRoles,
+} from "../../db/schema/index.js";
+import { ApiError } from "../../utils/apiError.js";
+import type {
+  UpdateBasicProfile,
+  PersonalDetailsInput,
+  EmploymentInput,
+  EducationInput,
+  ProjectInput,
+  ItSkillInput,
+} from "./profile.types.js";
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+async function getProfileByUserId(userId: string) {
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.userId, userId))
+    .limit(1);
+  return profile ?? null;
+}
+
+function requireProfile(profile: Awaited<ReturnType<typeof getProfileByUserId>>) {
+  if (!profile) {
+    throw new ApiError(404, "Profile not found. Complete onboarding first.");
+  }
+  return profile;
+}
+
+// ─── Full Profile Read ───────────────────────────────────────
+
+export async function getFullProfile(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+
+  const [personal] = await db
+    .select()
+    .from(personalDetails)
+    .where(eq(personalDetails.profileId, profile.id))
+    .limit(1);
+
+  const empList = await db
+    .select()
+    .from(employments)
+    .where(eq(employments.profileId, profile.id))
+    .orderBy(employments.isCurrent, employments.startDate);
+
+  const eduList = await db
+    .select()
+    .from(educations)
+    .where(eq(educations.profileId, profile.id))
+    .orderBy(educations.passOutYear);
+
+  const projList = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.profileId, profile.id))
+    .orderBy(projects.startDate);
+
+  const itSkillsList = await db
+    .select()
+    .from(itSkills)
+    .where(eq(itSkills.profileId, profile.id))
+    .orderBy(itSkills.name);
+
+  const [resume] = await db
+    .select()
+    .from(resumes)
+    .where(eq(resumes.profileId, profile.id))
+    .limit(1);
+
+  const profileSkillRows = await db
+    .select({
+      skillId: profileSkills.skillId,
+      skillName: skills.name,
+    })
+    .from(profileSkills)
+    .innerJoin(skills, eq(profileSkills.skillId, skills.id))
+    .where(eq(profileSkills.profileId, profile.id));
+
+  // Resolve city / locality / role names
+  let cityName = null;
+  let localityName = null;
+  let roleName = null;
+
+  if (profile.preferredCityId) {
+    const [city] = await db
+      .select({ name: cities.name })
+      .from(cities)
+      .where(eq(cities.id, profile.preferredCityId))
+      .limit(1);
+    cityName = city?.name ?? null;
+  }
+  if (profile.preferredLocalityId) {
+    const [loc] = await db
+      .select({ name: localities.name })
+      .from(localities)
+      .where(eq(localities.id, profile.preferredLocalityId))
+      .limit(1);
+    localityName = loc?.name ?? null;
+  }
+  if (profile.preferredRoleId) {
+    const [role] = await db
+      .select({ name: jobRoles.name })
+      .from(jobRoles)
+      .where(eq(jobRoles.id, profile.preferredRoleId))
+      .limit(1);
+    roleName = role?.name ?? null;
+  }
+
+  return {
+    ...profile,
+    cityName,
+    localityName,
+    roleName,
+    skills: profileSkillRows,
+    personalDetails: personal ?? null,
+    employments: empList,
+    educations: eduList,
+    projects: projList,
+    itSkills: itSkillsList,
+    resume: resume ?? null,
+  };
+}
+
+// ─── Basic Profile Update ────────────────────────────────────
+
+export async function updateBasicProfile(
+  userId: string,
+  data: UpdateBasicProfile,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(profiles)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(profiles.id, profile.id))
+    .returning();
+  return updated;
+}
+
+// ─── Headline + Summary ──────────────────────────────────────
+
+export async function updateHeadline(userId: string, headline: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(profiles)
+    .set({ headline, updatedAt: new Date() })
+    .where(eq(profiles.id, profile.id))
+    .returning();
+  return updated;
+}
+
+export async function updateSummary(userId: string, summary: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(profiles)
+    .set({ summary, updatedAt: new Date() })
+    .where(eq(profiles.id, profile.id))
+    .returning();
+  return updated;
+}
+
+// ─── Personal Details ────────────────────────────────────────
+
+export async function getPersonalDetails(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [details] = await db
+    .select()
+    .from(personalDetails)
+    .where(eq(personalDetails.profileId, profile.id))
+    .limit(1);
+  return details ?? null;
+}
+
+export async function upsertPersonalDetails(
+  userId: string,
+  data: PersonalDetailsInput,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const existing = await db
+    .select({ id: personalDetails.id })
+    .from(personalDetails)
+    .where(eq(personalDetails.profileId, profile.id))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const [updated] = await db
+      .update(personalDetails)
+      .set(data)
+      .where(eq(personalDetails.profileId, profile.id))
+      .returning();
+    return updated;
+  }
+
+  const [created] = await db
+    .insert(personalDetails)
+    .values({ profileId: profile.id, ...data })
+    .returning();
+  return created;
+}
+
+// ─── Employment CRUD ─────────────────────────────────────────
+
+export async function getEmployments(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  return db
+    .select()
+    .from(employments)
+    .where(eq(employments.profileId, profile.id))
+    .orderBy(employments.startDate);
+}
+
+export async function createEmployment(userId: string, data: EmploymentInput) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [created] = await db
+    .insert(employments)
+    .values({ profileId: profile.id, ...data })
+    .returning();
+  return created;
+}
+
+export async function updateEmployment(
+  userId: string,
+  employmentId: number,
+  data: EmploymentInput,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(employments)
+    .set({ ...data, updatedAt: new Date() })
+    .where(
+      and(
+        eq(employments.id, employmentId),
+        eq(employments.profileId, profile.id),
+      ),
+    )
+    .returning();
+  if (!updated) throw new ApiError(404, "Employment not found");
+  return updated;
+}
+
+export async function deleteEmployment(userId: string, employmentId: number) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const deleted = await db
+    .delete(employments)
+    .where(
+      and(
+        eq(employments.id, employmentId),
+        eq(employments.profileId, profile.id),
+      ),
+    )
+    .returning();
+  if (deleted.length === 0) throw new ApiError(404, "Employment not found");
+}
+
+// ─── Education CRUD ──────────────────────────────────────────
+
+export async function getEducations(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  return db
+    .select()
+    .from(educations)
+    .where(eq(educations.profileId, profile.id))
+    .orderBy(educations.passOutYear);
+}
+
+export async function createEducation(userId: string, data: EducationInput) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [created] = await db
+    .insert(educations)
+    .values({ profileId: profile.id, ...data })
+    .returning();
+  return created;
+}
+
+export async function updateEducation(
+  userId: string,
+  educationId: number,
+  data: EducationInput,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(educations)
+    .set({ ...data, updatedAt: new Date() })
+    .where(
+      and(
+        eq(educations.id, educationId),
+        eq(educations.profileId, profile.id),
+      ),
+    )
+    .returning();
+  if (!updated) throw new ApiError(404, "Education not found");
+  return updated;
+}
+
+export async function deleteEducation(userId: string, educationId: number) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const deleted = await db
+    .delete(educations)
+    .where(
+      and(
+        eq(educations.id, educationId),
+        eq(educations.profileId, profile.id),
+      ),
+    )
+    .returning();
+  if (deleted.length === 0) throw new ApiError(404, "Education not found");
+}
+
+// ─── Projects CRUD ───────────────────────────────────────────
+
+export async function getProjects(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  return db
+    .select()
+    .from(projects)
+    .where(eq(projects.profileId, profile.id))
+    .orderBy(projects.startDate);
+}
+
+export async function createProject(userId: string, data: ProjectInput) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [created] = await db
+    .insert(projects)
+    .values({ profileId: profile.id, ...data })
+    .returning();
+  return created;
+}
+
+export async function updateProject(
+  userId: string,
+  projectId: number,
+  data: ProjectInput,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(projects)
+    .set({ ...data, updatedAt: new Date() })
+    .where(
+      and(eq(projects.id, projectId), eq(projects.profileId, profile.id)),
+    )
+    .returning();
+  if (!updated) throw new ApiError(404, "Project not found");
+  return updated;
+}
+
+export async function deleteProject(userId: string, projectId: number) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const deleted = await db
+    .delete(projects)
+    .where(
+      and(eq(projects.id, projectId), eq(projects.profileId, profile.id)),
+    )
+    .returning();
+  if (deleted.length === 0) throw new ApiError(404, "Project not found");
+}
+
+// ─── IT Skills CRUD ──────────────────────────────────────────
+
+export async function getItSkills(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  return db
+    .select()
+    .from(itSkills)
+    .where(eq(itSkills.profileId, profile.id))
+    .orderBy(itSkills.name);
+}
+
+export async function createItSkill(userId: string, data: ItSkillInput) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [created] = await db
+    .insert(itSkills)
+    .values({ profileId: profile.id, ...data })
+    .returning();
+  return created;
+}
+
+export async function updateItSkill(
+  userId: string,
+  skillId: number,
+  data: ItSkillInput,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [updated] = await db
+    .update(itSkills)
+    .set({ ...data, updatedAt: new Date() })
+    .where(
+      and(eq(itSkills.id, skillId), eq(itSkills.profileId, profile.id)),
+    )
+    .returning();
+  if (!updated) throw new ApiError(404, "IT skill not found");
+  return updated;
+}
+
+export async function deleteItSkill(userId: string, skillId: number) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const deleted = await db
+    .delete(itSkills)
+    .where(
+      and(eq(itSkills.id, skillId), eq(itSkills.profileId, profile.id)),
+    )
+    .returning();
+  if (deleted.length === 0) throw new ApiError(404, "IT skill not found");
+}
+
+// ─── Resume ──────────────────────────────────────────────────
+
+export async function getResume(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const [resume] = await db
+    .select()
+    .from(resumes)
+    .where(eq(resumes.profileId, profile.id))
+    .limit(1);
+  return resume ?? null;
+}
+
+export async function upsertResume(
+  userId: string,
+  fileName: string,
+  filePath: string,
+) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const existing = await db
+    .select({ id: resumes.id })
+    .from(resumes)
+    .where(eq(resumes.profileId, profile.id))
+    .limit(1);
+
+  if (existing.length > 0) {
+    const [updated] = await db
+      .update(resumes)
+      .set({ fileName, filePath, uploadedAt: new Date() })
+      .where(eq(resumes.profileId, profile.id))
+      .returning();
+    return updated;
+  }
+
+  const [created] = await db
+    .insert(resumes)
+    .values({ profileId: profile.id, fileName, filePath })
+    .returning();
+  return created;
+}
+
+export async function deleteResume(userId: string) {
+  const profile = requireProfile(await getProfileByUserId(userId));
+  const deleted = await db
+    .delete(resumes)
+    .where(eq(resumes.profileId, profile.id))
+    .returning();
+  if (deleted.length === 0) throw new ApiError(404, "No resume found");
+  return deleted[0];
+}
