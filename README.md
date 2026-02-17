@@ -56,7 +56,11 @@ sortout-backend/
             ├── user.service.ts           # register, login, getById, getByEmail
             ├── token.service.ts          # JWT + refresh token (issue, verify, rotate)
             ├── auth.controller.ts        # Route handlers
-            └── auth.router.ts            # Express router -> /api/auth
+            ├── auth.router.ts            # Express router -> /api/auth
+            ├── email.service.ts          # Resend API (verification + password reset emails)
+            ├── googleAuth.service.ts     # Google id_token verification
+            ├── twilio.service.ts         # Twilio SMS OTP delivery
+            └── rate-limit.ts             # Rate limiters (auth, OTP)
 ```
 
 ---
@@ -66,7 +70,7 @@ sortout-backend/
 | #   | Module          | Status      | Description                                              |
 |-----|-----------------|-------------|----------------------------------------------------------|
 | 0   | Project Init    | Done        | Docker, deps, config, DB client, utils, error middleware, server running |
-| 1   | User Management | Not Started | Register, login, JWT, refresh, me, email verify, OTP, Google |
+| 1   | User Management | Done        | Register, login, JWT, refresh, me, email verify, forgot/reset password, OTP, Google OAuth, identity linking |
 | 2   | Onboarding      | Future      | Post-signup flow, role selection                         |
 | 3   | Profile         | Future      | User profile CRUD, resume, skills                        |
 | 4   | Job Listings    | Future      | Create, search, filter, apply                             |
@@ -100,6 +104,13 @@ ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_SECRET=<long-random-string>
 REFRESH_TOKEN_EXPIRY=7d
 CORS_ORIGIN=http://localhost:3000
+FRONTEND_URL=http://localhost:3000
+RESEND_API_KEY=<resend-api-key>
+GOOGLE_CLIENT_ID=<google-oauth-client-id>
+GOOGLE_CLIENT_SECRET=<google-oauth-client-secret>
+TWILIO_ACCOUNT_SID=<twilio-account-sid>
+TWILIO_AUTH_TOKEN=<twilio-auth-token>
+TWILIO_PHONE_NUMBER=<twilio-phone-number>
 ```
 
 ### 4. Run migrations
@@ -121,17 +132,17 @@ Server runs on `http://localhost:8000`. Health check: `GET /health`.
 
 ## API Routes — Module 1 (User Management)
 
-### Phase 1 (Core)
+### Core Auth
 
 | Method | Path                  | Auth | Description           |
 |--------|-----------------------|------|-----------------------|
-| POST   | /api/auth/register    | No   | Register new user     |
-| POST   | /api/auth/login       | No   | Login (email + pass)  |
+| POST   | /api/auth/register    | No   | Register (email + password) |
+| POST   | /api/auth/login       | No   | Login (email + password)    |
 | POST   | /api/auth/logout      | No   | Revoke refresh token  |
 | POST   | /api/auth/refresh     | No   | Rotate refresh token  |
 | GET    | /api/auth/me          | Yes  | Get current user      |
 
-### Phase 2-5 (Later)
+### Email Verification & Password Reset
 
 | Method | Path                         | Auth | Description          |
 |--------|------------------------------|------|----------------------|
@@ -139,9 +150,16 @@ Server runs on `http://localhost:8000`. Health check: `GET /health`.
 | POST   | /api/auth/resend-verify-email| No   | Resend verify link   |
 | POST   | /api/auth/forgot-password    | No   | Send reset link      |
 | POST   | /api/auth/reset-password     | No   | Reset with token     |
-| POST   | /api/auth/login/otp/request  | No   | Request OTP          |
-| POST   | /api/auth/login/otp/verify   | No   | Verify OTP + login   |
-| POST   | /api/auth/google             | No   | Google OAuth login   |
+
+### Phone OTP, Google OAuth & Identity Linking
+
+| Method | Path                    | Auth | Description                          |
+|--------|-------------------------|------|--------------------------------------|
+| POST   | /api/auth/request-otp   | No   | Send OTP to phone (Twilio SMS)       |
+| POST   | /api/auth/verify-otp    | No   | Verify OTP + login/register          |
+| POST   | /api/auth/google        | No   | Google OAuth login (id_token)        |
+| POST   | /api/auth/link-phone    | Yes  | Link phone to existing account       |
+| POST   | /api/auth/link-email    | Yes  | Link email + password to existing account |
 
 ---
 
@@ -152,6 +170,9 @@ Server runs on `http://localhost:8000`. Health check: `GET /health`.
 - **On refresh:** Old token deleted, new one issued (rotation).
 - **Cookie:** httpOnly, secure (prod), sameSite=lax, path=/api/auth, maxAge=7d.
 - **Passwords:** bcrypt (cost 10), min 8 characters.
+- **Three auth methods:** Phone OTP (primary), email/password, Google OAuth.
+- **Identity linking:** Users sign up via phone (email is null). They can later link email or Google to the same account via `/link-email` and `/link-phone`. No auto-linking at login — linking is explicit and user-initiated.
+- **`email` is nullable.** Phone-only users have `email: null`. The `provider` field tracks the last-used auth method.
 
 ---
 

@@ -25,9 +25,9 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export function issueAccessToken(userId: string, email: string): string {
+export function issueAccessToken(userId: string, identifier: string): string {
   return jwt.sign(
-    { sub: userId, email, type: "access" },
+    { sub: userId, identifier, type: "access" },
     env.ACCESS_TOKEN_SECRET,
     { expiresIn: env.ACCESS_TOKEN_EXPIRY } as jwt.SignOptions,
   );
@@ -55,13 +55,14 @@ export async function issueRefreshToken(
 
 export function verifyAccessToken(token: string): {
   userId: string;
-  email: string;
+  identifier: string;
 } {
   const payload = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as {
     sub: string;
-    email: string;
+    identifier?: string;
+    email?: string;
   };
-  return { userId: payload.sub, email: payload.email };
+  return { userId: payload.sub, identifier: payload.identifier ?? payload.email ?? "" };
 }
 
 export async function verifyAndRotateRefreshToken(

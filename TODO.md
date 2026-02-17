@@ -44,6 +44,7 @@ Done = ✓ | Not done = leave blank
 | ✓ | M1-12 — Phase 3: Forgot / reset password |
 | ✓ | M1-13 — Phase 4: OTP login (request + verify) |
 | ✓ | M1-14 — Phase 5: Google OAuth |
+| ✓ | M1-15 — Unified Identity Linking (email nullable, phone/email linking endpoints) |
 
 ---
 

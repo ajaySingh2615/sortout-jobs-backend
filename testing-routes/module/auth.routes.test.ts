@@ -501,8 +501,8 @@ describe("POST /api/auth/request-otp", () => {
 });
 
 describe("POST /api/auth/verify-otp", () => {
-  it("returns 200 with user and tokens when code is valid", async () => {
-    const phone = "+17656456966";
+  it("returns 200 with user (email=null) and tokens when code is valid", async () => {
+    const phone = `+1555${Date.now().toString().slice(-7)}`;
     const code = await tokenService.createPhoneOtpToken(phone);
 
     const res = await request(app)
@@ -513,6 +513,9 @@ describe("POST /api/auth/verify-otp", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Logged in");
     expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.email).toBeNull();
+    expect(res.body.data.user.phone).toBe(phone);
+    expect(res.body.data.user.phoneVerifiedAt).toBeDefined();
     expect(res.body.data.accessToken).toBeDefined();
     expect(res.body.data.expiresIn).toBe("15m");
     expect(
@@ -538,5 +541,143 @@ describe("POST /api/auth/verify-otp", () => {
 
     expect(res.body.success).toBe(false);
     expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/link-phone", () => {
+  it("links phone to an email-based user, then phone login returns same user ID", async () => {
+    const email = uniqueEmail();
+    const regRes = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "password123", name: "Link Phone User" })
+      .expect(201);
+
+    const accessToken = regRes.body.data.accessToken;
+    const userId = regRes.body.data.user.id;
+    const phone = `+1555${Date.now().toString().slice(-7)}`;
+
+    const code = await tokenService.createPhoneOtpToken(phone);
+    const linkRes = await request(app)
+      .post(`${BASE}/link-phone`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ phone, code })
+      .expect(200);
+
+    expect(linkRes.body.success).toBe(true);
+    expect(linkRes.body.message).toContain("Phone linked");
+    expect(linkRes.body.data.user.phone).toBe(phone);
+    expect(linkRes.body.data.user.phoneVerifiedAt).toBeDefined();
+    expect(linkRes.body.data.user.id).toBe(userId);
+
+    const otpCode = await tokenService.createPhoneOtpToken(phone);
+    const otpRes = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone, code: otpCode })
+      .expect(200);
+
+    expect(otpRes.body.data.user.id).toBe(userId);
+  });
+
+  it("returns 409 when phone already belongs to another user", async () => {
+    const phone = `+1555${Date.now().toString().slice(-7)}`;
+    const otpCode = await tokenService.createPhoneOtpToken(phone);
+    await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone, code: otpCode })
+      .expect(200);
+
+    const email = uniqueEmail();
+    const regRes = await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "password123", name: "Conflict User" })
+      .expect(201);
+    const accessToken = regRes.body.data.accessToken;
+
+    const code = await tokenService.createPhoneOtpToken(phone);
+    const res = await request(app)
+      .post(`${BASE}/link-phone`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ phone, code })
+      .expect(409);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("already linked");
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    const res = await request(app)
+      .post(`${BASE}/link-phone`)
+      .send({ phone: "+15551234567", code: "123456" })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+  });
+});
+
+describe("POST /api/auth/link-email", () => {
+  it("links email to a phone-based user, then email login returns same user ID", async () => {
+    const phone = `+1555${Date.now().toString().slice(-7)}`;
+    const otpCode = await tokenService.createPhoneOtpToken(phone);
+    const otpRes = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone, code: otpCode })
+      .expect(200);
+
+    const accessToken = otpRes.body.data.accessToken;
+    const userId = otpRes.body.data.user.id;
+    const email = uniqueEmail();
+    const password = "linkpass123";
+
+    const linkRes = await request(app)
+      .post(`${BASE}/link-email`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ email, password, name: "Linked Name" })
+      .expect(200);
+
+    expect(linkRes.body.success).toBe(true);
+    expect(linkRes.body.message).toContain("Email linked");
+    expect(linkRes.body.data.user.email).toBe(email);
+    expect(linkRes.body.data.user.id).toBe(userId);
+
+    const loginRes = await request(app)
+      .post(`${BASE}/login`)
+      .send({ email, password })
+      .expect(200);
+
+    expect(loginRes.body.data.user.id).toBe(userId);
+  });
+
+  it("returns 409 when email already belongs to another user", async () => {
+    const existingEmail = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email: existingEmail, password: "password123", name: "Existing" })
+      .expect(201);
+
+    const phone = `+1555${Date.now().toString().slice(-7)}`;
+    const otpCode = await tokenService.createPhoneOtpToken(phone);
+    const otpRes = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone, code: otpCode })
+      .expect(200);
+    const accessToken = otpRes.body.data.accessToken;
+
+    const res = await request(app)
+      .post(`${BASE}/link-email`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ email: existingEmail, password: "password123" })
+      .expect(409);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("already linked");
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    const res = await request(app)
+      .post(`${BASE}/link-email`)
+      .send({ email: "test@test.com", password: "password123" })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
   });
 });

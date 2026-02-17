@@ -48,5 +48,15 @@ router.post(
   otpVerifyPerIpLimiter,
   asyncHandler(authController.verifyOtp),
 );
+router.post(
+  "/link-phone",
+  requireAuth,
+  asyncHandler(authController.linkPhone),
+);
+router.post(
+  "/link-email",
+  requireAuth,
+  asyncHandler(authController.linkEmail),
+);
 
 export const authRouter = router;

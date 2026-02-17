@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ApiError } from "../utils/apiError.js";
 import { verifyAccessToken } from "../modules/user-management/token.service.js";
 
-export type AuthUser = { userId: string; email: string };
+export type AuthUser = { userId: string; identifier: string };
 
 declare global {
   namespace Express {
@@ -29,7 +29,7 @@ export function requireAuth(
 
   try {
     const payload = verifyAccessToken(token);
-    req.user = { userId: payload.userId, email: payload.email };
+    req.user = { userId: payload.userId, identifier: payload.identifier };
     next();
   } catch {
     next(new ApiError(401, "Unauthorized", ["Invalid or expired token"]));

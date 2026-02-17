@@ -9,21 +9,25 @@ const SALT_ROUNDS = 10;
 
 function toUserResponse(row: {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   name: string;
   avatarUrl: string | null;
   role: string;
   emailVerifiedAt: Date | null;
+  phoneVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): UserResponse {
   return {
     id: row.id,
-    email: row.email,
+    email: row.email ?? null,
+    phone: row.phone ?? null,
     name: row.name,
     avatarUrl: row.avatarUrl ? row.avatarUrl : null,
     role: row.role,
     emailVerifiedAt: row.emailVerifiedAt,
+    phoneVerifiedAt: row.phoneVerifiedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -42,10 +46,12 @@ export async function register(data: RegisterBody): Promise<UserResponse> {
     .returning({
       id: users.id,
       email: users.email,
+      phone: users.phone,
       name: users.name,
       avatarUrl: users.avatarUrl,
       role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     });
@@ -56,12 +62,14 @@ export async function register(data: RegisterBody): Promise<UserResponse> {
 
 export async function getByEmail(email: string): Promise<{
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   name: string;
   passwordHash: string | null;
   avatarUrl: string | null;
   role: string;
   emailVerifiedAt: Date | null;
+  phoneVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 } | null> {
@@ -83,11 +91,13 @@ export function normalizePhone(phone: string): string {
 
 export async function getByPhone(phone: string): Promise<{
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   name: string;
   avatarUrl: string | null;
   role: string;
   emailVerifiedAt: Date | null;
+  phoneVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 } | null> {
@@ -96,10 +106,12 @@ export async function getByPhone(phone: string): Promise<{
     .select({
       id: users.id,
       email: users.email,
+      phone: users.phone,
       name: users.name,
       avatarUrl: users.avatarUrl,
       role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -117,21 +129,22 @@ export async function findOrCreatePhoneUser(phone: string): Promise<UserResponse
     .where(eq(users.phone, normalized))
     .limit(1);
   const row = existing[0];
-  const placeholderEmail = `phone_${normalized.replace(/\D/g, "")}@sortout.phone`;
   const now = new Date();
 
   if (row) {
     const updated = await db
       .update(users)
-      .set({ provider: "phone", updatedAt: now })
+      .set({ provider: "phone", phoneVerifiedAt: now, updatedAt: now })
       .where(eq(users.id, row.id))
       .returning({
         id: users.id,
         email: users.email,
+        phone: users.phone,
         name: users.name,
         avatarUrl: users.avatarUrl,
         role: users.role,
         emailVerifiedAt: users.emailVerifiedAt,
+        phoneVerifiedAt: users.phoneVerifiedAt,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       });
@@ -143,19 +156,22 @@ export async function findOrCreatePhoneUser(phone: string): Promise<UserResponse
   const inserted = await db
     .insert(users)
     .values({
-      email: placeholderEmail,
+      email: null,
       phone: normalized,
       passwordHash: null,
       name: "User",
       provider: "phone",
+      phoneVerifiedAt: now,
     })
     .returning({
       id: users.id,
       email: users.email,
+      phone: users.phone,
       name: users.name,
       avatarUrl: users.avatarUrl,
       role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     });
@@ -180,10 +196,12 @@ export async function getById(id: string): Promise<UserResponse | null> {
     .select({
       id: users.id,
       email: users.email,
+      phone: users.phone,
       name: users.name,
       avatarUrl: users.avatarUrl,
       role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -242,10 +260,12 @@ export async function findOrCreateGoogleUser(
       .returning({
         id: users.id,
         email: users.email,
+        phone: users.phone,
         name: users.name,
         avatarUrl: users.avatarUrl,
         role: users.role,
         emailVerifiedAt: users.emailVerifiedAt,
+        phoneVerifiedAt: users.phoneVerifiedAt,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       });
@@ -267,14 +287,100 @@ export async function findOrCreateGoogleUser(
     .returning({
       id: users.id,
       email: users.email,
+      phone: users.phone,
       name: users.name,
       avatarUrl: users.avatarUrl,
       role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     });
   const row = inserted[0];
   if (!row) throw new Error("Insert failed");
   return toUserResponse(row);
+}
+
+export async function linkPhoneToUser(
+  userId: string,
+  phone: string,
+): Promise<UserResponse> {
+  const normalized = normalizePhone(phone);
+
+  const conflict = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.phone, normalized))
+    .limit(1);
+  if (conflict[0] && conflict[0].id !== userId) {
+    throw Object.assign(new Error("Phone already linked to another account"), { statusCode: 409 });
+  }
+
+  const now = new Date();
+  const updated = await db
+    .update(users)
+    .set({ phone: normalized, phoneVerifiedAt: now, updatedAt: now })
+    .where(eq(users.id, userId))
+    .returning({
+      id: users.id,
+      email: users.email,
+      phone: users.phone,
+      name: users.name,
+      avatarUrl: users.avatarUrl,
+      role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    });
+  const out = updated[0];
+  if (!out) throw new Error("User not found");
+  return toUserResponse(out);
+}
+
+export async function linkEmailToUser(
+  userId: string,
+  email: string,
+  password: string,
+  name?: string,
+): Promise<UserResponse> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const conflict = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+  if (conflict[0] && conflict[0].id !== userId) {
+    throw Object.assign(new Error("Email already linked to another account"), { statusCode: 409 });
+  }
+
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const now = new Date();
+  const setValues: Record<string, unknown> = {
+    email: normalizedEmail,
+    passwordHash,
+    updatedAt: now,
+  };
+  if (name) setValues.name = name.trim();
+
+  const updated = await db
+    .update(users)
+    .set(setValues)
+    .where(eq(users.id, userId))
+    .returning({
+      id: users.id,
+      email: users.email,
+      phone: users.phone,
+      name: users.name,
+      avatarUrl: users.avatarUrl,
+      role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
+      phoneVerifiedAt: users.phoneVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    });
+  const out = updated[0];
+  if (!out) throw new Error("User not found");
+  return toUserResponse(out);
 }

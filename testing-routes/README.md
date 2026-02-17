@@ -34,7 +34,9 @@ npm run test:watch  # watch mode
 | POST /api/auth/reset-password | 200 valid token + new password (login with new works), 400 invalid/expired token, 400 newPassword too short |
 | POST /api/auth/google | 200 valid idToken (user + accessToken + cookie), 401 invalid token, 400 missing idToken |
 | POST /api/auth/request-otp | 200 OTP sent (Twilio configured), 503 Twilio not configured, 400 invalid phone, 429 rate limit |
-| POST /api/auth/verify-otp | 200 valid code (user + tokens + cookie), 400 invalid/expired code, 400 invalid body |
+| POST /api/auth/verify-otp | 200 valid code (user with email=null + tokens + cookie), 400 invalid/expired code, 400 invalid body |
+| POST /api/auth/link-phone | 200 link phone + same user ID on phone login, 409 phone taken, 401 unauthenticated |
+| POST /api/auth/link-email | 200 link email + same user ID on email login, 409 email taken, 401 unauthenticated |
 
 ## cURL and Postman
 

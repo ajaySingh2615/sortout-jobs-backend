@@ -11,6 +11,8 @@ import {
   googleAuthBodySchema,
   requestOtpBodySchema,
   verifyOtpBodySchema,
+  linkPhoneBodySchema,
+  linkEmailBodySchema,
 } from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
@@ -41,7 +43,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   if (existing) throw new ApiError(409, "Email already registered");
 
   const user = await userService.register(data);
-  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email ?? user.phone ?? user.id);
   const refreshToken = await tokenService.issueRefreshToken(
     user.id,
     req.get("User-Agent") ?? undefined,
@@ -52,7 +54,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     success: true,
     statusCode: 201,
     message: "Registered",
-    data: { user, accessToken, expiresIn: "15m" },
+    data: { user, accessToken, refreshToken, expiresIn: "15m" },
   });
 }
 
@@ -69,7 +71,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   const user = await userService.login(email, password);
   if (!user) throw new ApiError(401, "Invalid email or password");
 
-  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email ?? user.phone ?? user.id);
   const refreshToken = await tokenService.issueRefreshToken(
     user.id,
     req.get("User-Agent") ?? undefined,
@@ -80,7 +82,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     success: true,
     statusCode: 200,
     message: "Logged in",
-    data: { user, accessToken, expiresIn: "15m" },
+    data: { user, accessToken, refreshToken, expiresIn: "15m" },
   });
 }
 
@@ -109,13 +111,13 @@ export async function refresh(req: Request, res: Response): Promise<void> {
   const user = await userService.getById(result.userId);
   if (!user) throw new ApiError(401, "User not found");
 
-  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email ?? user.phone ?? user.id);
   res.cookie(COOKIE_REFRESH, result.newRefreshToken, COOKIE_OPTIONS);
   res.status(200).json({
     success: true,
     statusCode: 200,
     message: "Token refreshed",
-    data: { user, accessToken, expiresIn: "15m" },
+    data: { user, accessToken, refreshToken: result.newRefreshToken, expiresIn: "15m" },
   });
 }
 
@@ -184,9 +186,9 @@ export async function resendVerifyEmail(
     });
     return;
   }
-  const rawToken = await tokenService.createEmailVerifyToken(user.email);
+  const rawToken = await tokenService.createEmailVerifyToken(user.email!);
   const verifyLink = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(rawToken)}`;
-  await emailService.sendVerificationEmail(user.email, verifyLink);
+  await emailService.sendVerificationEmail(user.email!, verifyLink);
   res.status(200).json({
     success: true,
     statusCode: 200,
@@ -226,9 +228,9 @@ export async function forgotPassword(
     });
     return;
   }
-  const rawToken = await tokenService.createPasswordResetToken(user.email);
+  const rawToken = await tokenService.createPasswordResetToken(user.email!);
   const resetLink = `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
-  await emailService.sendPasswordResetEmail(user.email, resetLink);
+  await emailService.sendPasswordResetEmail(user.email!, resetLink);
   res.status(200).json({
     success: true,
     statusCode: 200,
@@ -283,7 +285,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
   }
 
   const user = await userService.findOrCreateGoogleUser(payload);
-  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email ?? user.phone ?? user.id);
   const refreshToken = await tokenService.issueRefreshToken(
     user.id,
     req.get("User-Agent") ?? undefined,
@@ -294,7 +296,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
     success: true,
     statusCode: 200,
     message: "Logged in",
-    data: { user, accessToken, expiresIn: "15m" },
+    data: { user, accessToken, refreshToken, expiresIn: "15m" },
   });
 }
 
@@ -340,7 +342,7 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
     throw new ApiError(400, "Invalid or expired code");
 
   const user = await userService.findOrCreatePhoneUser(result.phone);
-  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email ?? user.phone ?? user.id);
   const refreshToken = await tokenService.issueRefreshToken(
     user.id,
     req.get("User-Agent") ?? undefined,
@@ -351,6 +353,78 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
     success: true,
     statusCode: 200,
     message: "Logged in",
-    data: { user, accessToken, expiresIn: "15m" },
+    data: { user, accessToken, refreshToken, expiresIn: "15m" },
   });
+}
+
+export async function linkPhone(req: Request, res: Response): Promise<void> {
+  if (!req.user) throw new ApiError(401, "Unauthorized");
+
+  const parsed = linkPhoneBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+
+  const normalized = userService.normalizePhone(parsed.data.phone);
+  const result = await tokenService.consumePhoneOtpToken(
+    normalized,
+    parsed.data.code,
+  );
+  if (!result)
+    throw new ApiError(400, "Invalid or expired OTP code");
+
+  try {
+    const user = await userService.linkPhoneToUser(req.user.userId, result.phone);
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Phone linked successfully",
+      data: { user },
+    });
+  } catch (e) {
+    const err = e as Error & { statusCode?: number };
+    if (err.statusCode === 409) throw new ApiError(409, err.message);
+    throw e;
+  }
+}
+
+export async function linkEmail(req: Request, res: Response): Promise<void> {
+  if (!req.user) throw new ApiError(401, "Unauthorized");
+
+  const parsed = linkEmailBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+
+  const { email, password, name } = parsed.data;
+
+  try {
+    const user = await userService.linkEmailToUser(
+      req.user.userId,
+      email,
+      password,
+      name,
+    );
+
+    const rawToken = await tokenService.createEmailVerifyToken(email);
+    const verifyLink = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(rawToken)}`;
+    await emailService.sendVerificationEmail(email, verifyLink);
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Email linked successfully. Verification email sent.",
+      data: { user },
+    });
+  } catch (e) {
+    const err = e as Error & { statusCode?: number };
+    if (err.statusCode === 409) throw new ApiError(409, err.message);
+    throw e;
+  }
 }

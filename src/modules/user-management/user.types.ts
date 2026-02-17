@@ -54,13 +54,32 @@ export const verifyOtpBodySchema = z.object({
     .refine((s) => /^\d{6}$/.test(s.trim()), "Code must be 6 digits"),
 });
 
+export const linkPhoneBodySchema = z.object({
+  phone: phoneSchema,
+  code: z
+    .string()
+    .min(1, "Code is required")
+    .refine((s) => /^\d{6}$/.test(s.trim()), "Code must be 6 digits"),
+});
+
+export const linkEmailBodySchema = z.object({
+  email: z.string().email("Invalid email").max(255),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128),
+  name: z.string().min(1).max(255).optional(),
+});
+
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
-  email: z.string().email(),
+  email: z.string().email().nullable(),
+  phone: z.string().nullable(),
   name: z.string(),
   avatarUrl: z.string().url().nullable(),
   role: z.string(),
   emailVerifiedAt: z.date().nullable(),
+  phoneVerifiedAt: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -80,5 +99,7 @@ export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 export type GoogleAuthBody = z.infer<typeof googleAuthBodySchema>;
 export type RequestOtpBody = z.infer<typeof requestOtpBodySchema>;
 export type VerifyOtpBody = z.infer<typeof verifyOtpBodySchema>;
+export type LinkPhoneBody = z.infer<typeof linkPhoneBodySchema>;
+export type LinkEmailBody = z.infer<typeof linkEmailBodySchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
