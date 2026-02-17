@@ -19,6 +19,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   FROM_EMAIL: z.string().default("SortOut <onboarding@resend.dev>"),
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
+
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

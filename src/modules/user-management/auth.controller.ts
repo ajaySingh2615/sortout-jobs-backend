@@ -8,10 +8,12 @@ import {
   resendVerifyEmailBodySchema,
   forgotPasswordBodySchema,
   resetPasswordBodySchema,
+  googleAuthBodySchema,
 } from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
 import * as emailService from "./email.service.js";
+import { verifyGoogleIdToken } from "./googleAuth.service.js";
 
 const COOKIE_REFRESH = "refreshToken";
 const COOKIE_OPTIONS = {
@@ -254,5 +256,41 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     statusCode: 200,
     message: "Password has been reset. You can now log in.",
     data: null,
+  });
+}
+
+export async function googleAuth(req: Request, res: Response): Promise<void> {
+  const parsed = googleAuthBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+
+  let payload;
+  try {
+    payload = await verifyGoogleIdToken(parsed.data.idToken);
+  } catch (e) {
+    const err = e as Error & { statusCode?: number };
+    throw new ApiError(
+      err.statusCode === 503 ? 503 : 401,
+      err.message || "Invalid Google token",
+    );
+  }
+
+  const user = await userService.findOrCreateGoogleUser(payload);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const refreshToken = await tokenService.issueRefreshToken(
+    user.id,
+    req.get("User-Agent") ?? undefined,
+  );
+
+  res.cookie(COOKIE_REFRESH, refreshToken, COOKIE_OPTIONS);
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "Logged in",
+    data: { user, accessToken, expiresIn: "15m" },
   });
 }

@@ -33,6 +33,10 @@ export const resetPasswordBodySchema = z.object({
   newPassword: passwordSchema,
 });
 
+export const googleAuthBodySchema = z.object({
+  idToken: z.string().min(1, "Google id_token is required"),
+});
+
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -56,5 +60,6 @@ export type VerifyEmailBody = z.infer<typeof verifyEmailBodySchema>;
 export type ResendVerifyEmailBody = z.infer<typeof resendVerifyEmailBodySchema>;
 export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
+export type GoogleAuthBody = z.infer<typeof googleAuthBodySchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;

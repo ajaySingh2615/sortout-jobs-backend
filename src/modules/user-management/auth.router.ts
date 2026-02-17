@@ -12,6 +12,11 @@ router.post(
   asyncHandler(authController.register),
 );
 router.post("/login", authLoginLimiter, asyncHandler(authController.login));
+router.post(
+  "/google",
+  authLoginLimiter,
+  asyncHandler(authController.googleAuth),
+);
 router.post("/logout", asyncHandler(authController.logout));
 router.post("/refresh", asyncHandler(authController.refresh));
 router.get("/me", requireAuth, asyncHandler(authController.me));

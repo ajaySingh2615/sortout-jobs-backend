@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { users } from "../../db/schema/index.js";
 import type { RegisterBody, UserResponse } from "./user.types.js";
+import type { GoogleTokenPayload } from "./googleAuth.service.js";
 
 const SALT_ROUNDS = 10;
 
@@ -128,4 +129,61 @@ export async function updatePasswordByEmail(
     .where(eq(users.email, email.toLowerCase().trim()))
     .returning({ id: users.id });
   return result.length > 0;
+}
+
+export async function findOrCreateGoogleUser(
+  payload: GoogleTokenPayload,
+): Promise<UserResponse> {
+  const email = payload.email.toLowerCase().trim();
+  const existing = await getByEmail(email);
+  const now = new Date();
+
+  if (existing) {
+    const updated = await db
+      .update(users)
+      .set({
+        provider: "google",
+        name: payload.name.trim() || existing.name,
+        avatarUrl: payload.picture ?? existing.avatarUrl,
+        updatedAt: now,
+      })
+      .where(eq(users.id, existing.id))
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        role: users.role,
+        emailVerifiedAt: users.emailVerifiedAt,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      });
+    const row = updated[0];
+    if (!row) throw new Error("Update failed");
+    return toUserResponse(row);
+  }
+
+  const inserted = await db
+    .insert(users)
+    .values({
+      email,
+      passwordHash: null,
+      name: payload.name.trim(),
+      avatarUrl: payload.picture ?? null,
+      provider: "google",
+      emailVerifiedAt: now,
+    })
+    .returning({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      avatarUrl: users.avatarUrl,
+      role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    });
+  const row = inserted[0];
+  if (!row) throw new Error("Insert failed");
+  return toUserResponse(row);
 }

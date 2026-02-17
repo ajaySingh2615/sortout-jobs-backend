@@ -32,6 +32,7 @@ npm run test:watch  # watch mode
 | POST /api/auth/resend-verify-email | 200 user exists unverified, 200 email not registered (no enumeration), 200 already verified, 400 invalid email |
 | POST /api/auth/forgot-password | 200 user exists, 200 email not registered (no enumeration), 400 invalid email |
 | POST /api/auth/reset-password | 200 valid token + new password (login with new works), 400 invalid/expired token, 400 newPassword too short |
+| POST /api/auth/google | 200 valid idToken (user + accessToken + cookie), 401 invalid token, 400 missing idToken |
 
 ## cURL and Postman
 

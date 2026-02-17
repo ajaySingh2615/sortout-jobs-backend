@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
 import * as tokenService from "../../src/modules/user-management/token.service.js";
+import * as googleAuthService from "../../src/modules/user-management/googleAuth.service.js";
+
+vi.mock("../../src/modules/user-management/googleAuth.service.js");
 
 const BASE = "/api/auth";
 
@@ -392,6 +395,60 @@ describe("POST /api/auth/reset-password", () => {
       .post(`${BASE}/reset-password`)
       .send({ token, newPassword: "short" })
       .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/google", () => {
+  it("returns 200 with user and accessToken when idToken is valid", async () => {
+    const email = uniqueEmail();
+    vi.mocked(googleAuthService.verifyGoogleIdToken).mockResolvedValueOnce({
+      email,
+      name: "Google User",
+      picture: "https://example.com/photo.jpg",
+    });
+
+    const res = await request(app)
+      .post(`${BASE}/google`)
+      .send({ idToken: "valid-google-id-token" })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Logged in");
+    expect(res.body.data.user.email).toBe(email);
+    expect(res.body.data.user.name).toBe("Google User");
+    expect(res.body.data.user.avatarUrl).toBe("https://example.com/photo.jpg");
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.expiresIn).toBe("15m");
+    expect(res.headers["set-cookie"]).toBeDefined();
+    expect(
+      res.headers["set-cookie"]?.some((c: string) => c.startsWith("refreshToken=")),
+    ).toBe(true);
+  });
+
+  it("returns 401 when idToken is invalid", async () => {
+    const err = new Error("Invalid or expired Google token") as Error & {
+      statusCode?: number;
+    };
+    err.statusCode = 401;
+    vi.mocked(googleAuthService.verifyGoogleIdToken).mockRejectedValueOnce(err);
+
+    const res = await request(app)
+      .post(`${BASE}/google`)
+      .send({ idToken: "invalid-token" })
+      .expect(401);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("Invalid");
+  });
+
+  it("returns 400 when idToken is missing", async () => {
+    const res = await request(app)
+      .post(`${BASE}/google`)
+      .send({})
+      .expect(400);
+
     expect(res.body.success).toBe(false);
     expect(res.body.message).toBe("Validation failed");
   });
