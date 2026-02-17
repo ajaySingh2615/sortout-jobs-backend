@@ -113,3 +113,19 @@ export async function setEmailVerifiedByEmail(email: string): Promise<boolean> {
     .returning({ id: users.id });
   return result.length > 0;
 }
+
+export async function updatePasswordByEmail(
+  email: string,
+  newPassword: string,
+): Promise<boolean> {
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  const result = await db
+    .update(users)
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.email, email.toLowerCase().trim()))
+    .returning({ id: users.id });
+  return result.length > 0;
+}

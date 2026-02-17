@@ -41,7 +41,7 @@ Done = ✓ | Not done = leave blank
 |:---:|------|
 | ✓ | M1-10 — Phase 1 hardening (cookie path/secure, JWT type) + rate limiting |
 | ✓ | M1-11 — Phase 2: Email verification (verify-email, resend) |
-| | M1-12 — Phase 3: Forgot / reset password |
+| ✓ | M1-12 — Phase 3: Forgot / reset password |
 | | M1-13 — Phase 4: OTP login (request + verify) |
 | | M1-14 — Phase 5: Google OAuth |
 

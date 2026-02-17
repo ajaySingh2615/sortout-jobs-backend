@@ -28,6 +28,10 @@ npm run test:watch  # watch mode
 | GET /api/auth/me | 200 with Bearer token, 401 no token, 401 invalid token |
 | POST /api/auth/refresh | 200 with valid cookie, 401 no token, 401 invalid token |
 | POST /api/auth/logout | 200 with cookie, 200 without (idempotent) |
+| POST /api/auth/verify-email | 200 valid token (marks verified), 400 invalid/expired token, 400 missing token |
+| POST /api/auth/resend-verify-email | 200 user exists unverified, 200 email not registered (no enumeration), 200 already verified, 400 invalid email |
+| POST /api/auth/forgot-password | 200 user exists, 200 email not registered (no enumeration), 400 invalid email |
+| POST /api/auth/reset-password | 200 valid token + new password (login with new works), 400 invalid/expired token, 400 newPassword too short |
 
 ## cURL and Postman
 

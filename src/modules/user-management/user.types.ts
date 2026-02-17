@@ -24,6 +24,15 @@ export const resendVerifyEmailBodySchema = z.object({
   email: z.string().email("Invalid email"),
 });
 
+export const forgotPasswordBodySchema = z.object({
+  email: z.string().email("Invalid email"),
+});
+
+export const resetPasswordBodySchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  newPassword: passwordSchema,
+});
+
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -45,5 +54,7 @@ export type RegisterBody = z.infer<typeof registerBodySchema>;
 export type LoginBody = z.infer<typeof loginBodySchema>;
 export type VerifyEmailBody = z.infer<typeof verifyEmailBodySchema>;
 export type ResendVerifyEmailBody = z.infer<typeof resendVerifyEmailBodySchema>;
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
+export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;

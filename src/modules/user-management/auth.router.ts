@@ -20,5 +20,7 @@ router.post(
   "/resend-verify-email",
   asyncHandler(authController.resendVerifyEmail),
 );
+router.post("/forgot-password", asyncHandler(authController.forgotPassword));
+router.post("/reset-password", asyncHandler(authController.resetPassword));
 
 export const authRouter = router;

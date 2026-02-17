@@ -19,12 +19,15 @@ function getIp(req: Request): string {
   return req.ip ?? "127.0.0.1";
 }
 
+const isTest = process.env.NODE_ENV === "test";
+const testMax = 10000;
+
 /**
  * Base auth limiter (IP-based) for everything under /api/auth
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: isTest ? testMax : 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: msg("Too many requests, try again later."),
@@ -35,7 +38,7 @@ export const authLimiter = rateLimit({
  */
 export const authRegisterLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: isTest ? testMax : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: msg("Too many register attempts, try again later."),
@@ -43,7 +46,7 @@ export const authRegisterLimiter = rateLimit({
 
 export const authLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: isTest ? testMax : 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: msg("Too many login attempts, try again later."),

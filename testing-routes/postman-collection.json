@@ -5,7 +5,9 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8000" },
-    { "key": "accessToken", "value": "" }
+    { "key": "accessToken", "value": "" },
+    { "key": "verifyToken", "value": "" },
+    { "key": "resetToken", "value": "" }
   ],
   "item": [
     {
@@ -53,6 +55,54 @@
       "request": {
         "method": "POST",
         "url": "{{baseUrl}}/api/auth/logout"
+      }
+    },
+    {
+      "name": "6. Verify Email",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{verifyToken}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/verify-email"
+      }
+    },
+    {
+      "name": "7. Resend Verify Email",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/resend-verify-email"
+      }
+    },
+    {
+      "name": "8. Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/forgot-password"
+      }
+    },
+    {
+      "name": "9. Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"newpassword123\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/reset-password"
       }
     }
   ]

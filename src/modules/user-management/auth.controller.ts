@@ -6,9 +6,12 @@ import {
   loginBodySchema,
   verifyEmailBodySchema,
   resendVerifyEmailBodySchema,
+  forgotPasswordBodySchema,
+  resetPasswordBodySchema,
 } from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
+import * as emailService from "./email.service.js";
 
 const COOKIE_REFRESH = "refreshToken";
 const COOKIE_OPTIONS = {
@@ -177,15 +180,79 @@ export async function resendVerifyEmail(
     return;
   }
   const rawToken = await tokenService.createEmailVerifyToken(user.email);
-  if (env.NODE_ENV === "development") {
-    console.log(
-      `[dev] Verify email link token for ${user.email}: ${rawToken}`,
-    );
-  }
+  const verifyLink = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(rawToken)}`;
+  await emailService.sendVerificationEmail(user.email, verifyLink);
   res.status(200).json({
     success: true,
     statusCode: 200,
     message: "If an account exists, a verification link was sent.",
+    data: null,
+  });
+}
+
+export async function forgotPassword(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const parsed = forgotPasswordBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+  const { email } = parsed.data;
+  const user = await userService.getByEmail(email);
+  if (!user) {
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "If an account exists, a password reset link was sent.",
+      data: null,
+    });
+    return;
+  }
+  if (!user.passwordHash) {
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "If an account exists, a password reset link was sent.",
+      data: null,
+    });
+    return;
+  }
+  const rawToken = await tokenService.createPasswordResetToken(user.email);
+  const resetLink = `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
+  await emailService.sendPasswordResetEmail(user.email, resetLink);
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "If an account exists, a password reset link was sent.",
+    data: null,
+  });
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const parsed = resetPasswordBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+  const { token, newPassword } = parsed.data;
+  const result = await tokenService.consumePasswordResetToken(token);
+  if (!result)
+    throw new ApiError(400, "Invalid or expired password reset link");
+  const updated = await userService.updatePasswordByEmail(
+    result.email,
+    newPassword,
+  );
+  if (!updated) throw new ApiError(400, "User not found");
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "Password has been reset. You can now log in.",
     data: null,
   });
 }

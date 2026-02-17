@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
+import * as tokenService from "../../src/modules/user-management/token.service.js";
 
 const BASE = "/api/auth";
 
@@ -222,5 +223,176 @@ describe("POST /api/auth/logout", () => {
     const res = await request(app).post(`${BASE}/logout`).expect(200);
     expect(res.body.success).toBe(true);
     expect(res.body.message).toBe("Logged out");
+  });
+});
+
+describe("POST /api/auth/verify-email", () => {
+  it("returns 200 when token is valid and marks email verified", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "verifypass123", name: "Verify User" })
+      .expect(201);
+    const token = await tokenService.createEmailVerifyToken(email);
+    const res = await request(app)
+      .post(`${BASE}/verify-email`)
+      .send({ token })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Email verified");
+    expect(res.body.data).toBeNull();
+  });
+
+  it("returns 400 when token is invalid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/verify-email`)
+      .send({ token: "invalid-token-here" })
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("Invalid or expired");
+  });
+
+  it("returns 400 when token is missing", async () => {
+    const res = await request(app)
+      .post(`${BASE}/verify-email`)
+      .send({})
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/resend-verify-email", () => {
+  it("returns 200 when user exists and is not verified", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "resendpass123", name: "Resend User" })
+      .expect(201);
+    const res = await request(app)
+      .post(`${BASE}/resend-verify-email`)
+      .send({ email })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("verification link");
+  });
+
+  it("returns 200 when email is not registered (no enumeration)", async () => {
+    const res = await request(app)
+      .post(`${BASE}/resend-verify-email`)
+      .send({ email: "not-registered@test.com" })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("verification link");
+  });
+
+  it("returns 200 and 'already verified' when user is already verified", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "alrverified123", name: "Already Verified" })
+      .expect(201);
+    const token = await tokenService.createEmailVerifyToken(email);
+    await request(app).post(`${BASE}/verify-email`).send({ token }).expect(200);
+    const res = await request(app)
+      .post(`${BASE}/resend-verify-email`)
+      .send({ email })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Email is already verified.");
+  });
+
+  it("returns 400 when email is invalid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/resend-verify-email`)
+      .send({ email: "not-an-email" })
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/forgot-password", () => {
+  it("returns 200 when user exists (no enumeration)", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "forgotpass123", name: "Forgot User" })
+      .expect(201);
+    const res = await request(app)
+      .post(`${BASE}/forgot-password`)
+      .send({ email })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("password reset link");
+  });
+
+  it("returns 200 when email is not registered (no enumeration)", async () => {
+    const res = await request(app)
+      .post(`${BASE}/forgot-password`)
+      .send({ email: "no-account@test.com" })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("password reset link");
+  });
+
+  it("returns 400 when email is invalid", async () => {
+    const res = await request(app)
+      .post(`${BASE}/forgot-password`)
+      .send({ email: "bad-email" })
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/reset-password", () => {
+  it("returns 200 when token is valid and password is updated", async () => {
+    const email = uniqueEmail();
+    const oldPassword = "oldpass123";
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: oldPassword, name: "Reset User" })
+      .expect(201);
+    const token = await tokenService.createPasswordResetToken(email);
+    const newPassword = "newpass123";
+    const res = await request(app)
+      .post(`${BASE}/reset-password`)
+      .send({ token, newPassword })
+      .expect(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("Password has been reset");
+    await request(app)
+      .post(`${BASE}/login`)
+      .send({ email, password: newPassword })
+      .expect(200);
+    await request(app)
+      .post(`${BASE}/login`)
+      .send({ email, password: oldPassword })
+      .expect(401);
+  });
+
+  it("returns 400 when token is invalid or expired", async () => {
+    const res = await request(app)
+      .post(`${BASE}/reset-password`)
+      .send({ token: "invalid-token", newPassword: "newpass123" })
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("Invalid or expired");
+  });
+
+  it("returns 400 when newPassword is too short", async () => {
+    const email = uniqueEmail();
+    await request(app)
+      .post(`${BASE}/register`)
+      .send({ email, password: "validpass123", name: "Short Pass User" })
+      .expect(201);
+    const token = await tokenService.createPasswordResetToken(email);
+    const res = await request(app)
+      .post(`${BASE}/reset-password`)
+      .send({ token, newPassword: "short" })
+      .expect(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
   });
 });
