@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
-import { refreshTokens } from "../../db/schema/index.js";
+import { authTokens, refreshTokens } from "../../db/schema/index.js";
 import { env } from "../../config/env.js";
 
 const REFRESH_TOKEN_BYTES = 32;
@@ -94,4 +94,41 @@ export async function revokeRefreshToken(rawToken: string): Promise<boolean> {
     .where(eq(refreshTokens.tokenHash, tokenHash))
     .returning({ id: refreshTokens.id });
   return deleted.length > 0;
+}
+
+const AUTH_TOKEN_BYTES = 32;
+const EMAIL_VERIFY_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+export async function createEmailVerifyToken(email: string): Promise<string> {
+  const raw = crypto.randomBytes(AUTH_TOKEN_BYTES).toString("hex");
+  const tokenHash = hashToken(raw);
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
+  const identifier = email.toLowerCase().trim();
+  await db.insert(authTokens).values({
+    type: "email_verify",
+    identifier,
+    tokenHash,
+    expiresAt,
+  });
+  return raw;
+}
+
+export async function consumeEmailVerifyToken(
+  rawToken: string,
+): Promise<{ email: string } | null> {
+  const tokenHash = hashToken(rawToken);
+  const rows = await db
+    .select({ id: authTokens.id, identifier: authTokens.identifier, expiresAt: authTokens.expiresAt })
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.tokenHash, tokenHash),
+        eq(authTokens.type, "email_verify"),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row || new Date() > row.expiresAt) return null;
+  await db.delete(authTokens).where(eq(authTokens.id, row.id));
+  return { email: row.identifier };
 }

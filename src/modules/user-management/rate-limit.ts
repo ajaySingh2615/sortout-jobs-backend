@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request } from "express";
 
 function msg(message: string) {
@@ -13,6 +13,10 @@ function getOtpIdentifier(req: Request): string {
     "";
 
   return raw.trim().toLowerCase();
+}
+
+function getIp(req: Request): string {
+  return req.ip ?? "127.0.0.1";
 }
 
 /**
@@ -61,7 +65,8 @@ export const otpRequestCooldownLimiter = rateLimit({
   max: 1,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `otp:req:cooldown:${getOtpIdentifier(req) || req.ip}`,
+  keyGenerator: (req) =>
+    `otp:req:cooldown:${getOtpIdentifier(req) || ipKeyGenerator(getIp(req))}`,
   message: msg("Please wait 1 minute before requesting another OTP."),
 });
 
@@ -70,7 +75,8 @@ export const otpRequestBurstPerIdentifierLimiter = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `otp:req:burst:${getOtpIdentifier(req) || req.ip}`,
+  keyGenerator: (req) =>
+    `otp:req:burst:${getOtpIdentifier(req) || ipKeyGenerator(getIp(req))}`,
   message: msg("Too many OTP requests. Try again in 5 minutes."),
 });
 
@@ -79,7 +85,8 @@ export const otpRequestDailyPerIdentifierLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `otp:req:daily:${getOtpIdentifier(req) || req.ip}`,
+  keyGenerator: (req) =>
+    `otp:req:daily:${getOtpIdentifier(req) || ipKeyGenerator(getIp(req))}`,
   message: msg("Daily OTP request limit reached. Try again tomorrow."),
 });
 
@@ -88,7 +95,7 @@ export const otpRequestPerIpLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `otp:req:ip:${req.ip}`,
+  keyGenerator: (req) => `otp:req:ip:${ipKeyGenerator(getIp(req))}`,
   message: msg("Too many OTP requests from this IP. Try again later."),
 });
 
@@ -103,6 +110,6 @@ export const otpVerifyPerIpLimiter = rateLimit({
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `otp:verify:ip:${req.ip}`,
+  keyGenerator: (req) => `otp:verify:ip:${ipKeyGenerator(getIp(req))}`,
   message: msg("Too many OTP attempts. Try again later."),
 });

@@ -1,7 +1,12 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../../utils/apiError.js";
 import { env } from "../../config/env.js";
-import { registerBodySchema, loginBodySchema } from "./user.types.js";
+import {
+  registerBodySchema,
+  loginBodySchema,
+  verifyEmailBodySchema,
+  resendVerifyEmailBodySchema,
+} from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
 
@@ -115,5 +120,72 @@ export async function me(req: Request, res: Response): Promise<void> {
     statusCode: 200,
     message: "OK",
     data: { user },
+  });
+}
+
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+  const parsed = verifyEmailBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+  const { token } = parsed.data;
+  const result = await tokenService.consumeEmailVerifyToken(token);
+  if (!result)
+    throw new ApiError(400, "Invalid or expired verification link");
+  const updated = await userService.setEmailVerifiedByEmail(result.email);
+  if (!updated) throw new ApiError(400, "User not found");
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "Email verified",
+    data: null,
+  });
+}
+
+export async function resendVerifyEmail(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const parsed = resendVerifyEmailBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+  const { email } = parsed.data;
+  const user = await userService.getByEmail(email);
+  if (!user) {
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "If an account exists, a verification link was sent.",
+      data: null,
+    });
+    return;
+  }
+  if (user.emailVerifiedAt) {
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Email is already verified.",
+      data: null,
+    });
+    return;
+  }
+  const rawToken = await tokenService.createEmailVerifyToken(user.email);
+  if (env.NODE_ENV === "development") {
+    console.log(
+      `[dev] Verify email link token for ${user.email}: ${rawToken}`,
+    );
+  }
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "If an account exists, a verification link was sent.",
+    data: null,
   });
 }

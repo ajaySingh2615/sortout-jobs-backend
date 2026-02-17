@@ -101,3 +101,15 @@ export async function getById(id: string): Promise<UserResponse | null> {
   const row = rows[0];
   return row ? toUserResponse(row) : null;
 }
+
+export async function setEmailVerifiedByEmail(email: string): Promise<boolean> {
+  const result = await db
+    .update(users)
+    .set({
+      emailVerifiedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.email, email.toLowerCase().trim()))
+    .returning({ id: users.id });
+  return result.length > 0;
+}
