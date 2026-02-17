@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import { authLimiter } from "./modules/user-management/rate-limit.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { authRouter } from "./modules/user-management/auth.router.js";
@@ -19,7 +20,7 @@ app.get("/health", (_req, res) => {
   res.json({ success: true, message: "OK" });
 });
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth", authLimiter, authRouter);
 
 app.use(errorHandler);
 

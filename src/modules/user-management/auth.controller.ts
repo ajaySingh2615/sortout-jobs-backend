@@ -1,15 +1,27 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../../utils/apiError.js";
+import { env } from "../../config/env.js";
 import { registerBodySchema, loginBodySchema } from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
 
 const COOKIE_REFRESH = "refreshToken";
-const COOKIE_OPTIONS = { httpOnly: true, secure: false, sameSite: "lax" as const, maxAge: 7 * 24 * 60 * 60 * 1000 };
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/api/auth",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
 
 export async function register(req: Request, res: Response): Promise<void> {
   const parsed = registerBodySchema.safeParse(req.body);
-  if (!parsed.success) throw new ApiError(400, "Validation failed", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`));
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
 
   const data = parsed.data;
   const existing = await userService.getByEmail(data.email);
@@ -17,7 +29,10 @@ export async function register(req: Request, res: Response): Promise<void> {
 
   const user = await userService.register(data);
   const accessToken = tokenService.issueAccessToken(user.id, user.email);
-  const refreshToken = await tokenService.issueRefreshToken(user.id, req.get("User-Agent") ?? undefined);
+  const refreshToken = await tokenService.issueRefreshToken(
+    user.id,
+    req.get("User-Agent") ?? undefined,
+  );
 
   res.cookie(COOKIE_REFRESH, refreshToken, COOKIE_OPTIONS);
   res.status(201).json({
@@ -30,14 +45,22 @@ export async function register(req: Request, res: Response): Promise<void> {
 
 export async function login(req: Request, res: Response): Promise<void> {
   const parsed = loginBodySchema.safeParse(req.body);
-  if (!parsed.success) throw new ApiError(400, "Validation failed", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`));
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
 
   const { email, password } = parsed.data;
   const user = await userService.login(email, password);
   if (!user) throw new ApiError(401, "Invalid email or password");
 
   const accessToken = tokenService.issueAccessToken(user.id, user.email);
-  const refreshToken = await tokenService.issueRefreshToken(user.id, req.get("User-Agent") ?? undefined);
+  const refreshToken = await tokenService.issueRefreshToken(
+    user.id,
+    req.get("User-Agent") ?? undefined,
+  );
 
   res.cookie(COOKIE_REFRESH, refreshToken, COOKIE_OPTIONS);
   res.status(200).json({
@@ -52,14 +75,22 @@ export async function logout(req: Request, res: Response): Promise<void> {
   const token = req.cookies?.[COOKIE_REFRESH] ?? req.body?.refreshToken;
   if (token) await tokenService.revokeRefreshToken(token);
   res.clearCookie(COOKIE_REFRESH);
-  res.status(200).json({ success: true, statusCode: 200, message: "Logged out", data: null });
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "Logged out",
+    data: null,
+  });
 }
 
 export async function refresh(req: Request, res: Response): Promise<void> {
   const token = req.cookies?.[COOKIE_REFRESH] ?? req.body?.refreshToken;
   if (!token) throw new ApiError(401, "Refresh token required");
 
-  const result = await tokenService.verifyAndRotateRefreshToken(token, req.get("User-Agent") ?? undefined);
+  const result = await tokenService.verifyAndRotateRefreshToken(
+    token,
+    req.get("User-Agent") ?? undefined,
+  );
   if (!result) throw new ApiError(401, "Invalid or expired refresh token");
 
   const user = await userService.getById(result.userId);

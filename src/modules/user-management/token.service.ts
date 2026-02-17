@@ -12,7 +12,12 @@ function parseExpiryToMs(expiry: string): number {
   if (!match) return 7 * 24 * 60 * 60 * 1000;
   const n = parseInt(match[1], 10);
   const unit = match[2];
-  const multipliers: Record<string, number> = { s: 1000, m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 };
+  const multipliers: Record<string, number> = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
   return n * (multipliers[unit] ?? 86400000);
 }
 
@@ -22,7 +27,7 @@ function hashToken(token: string): string {
 
 export function issueAccessToken(userId: string, email: string): string {
   return jwt.sign(
-    { sub: userId, email },
+    { sub: userId, email, type: "access" },
     env.ACCESS_TOKEN_SECRET,
     { expiresIn: env.ACCESS_TOKEN_EXPIRY } as jwt.SignOptions,
   );
@@ -34,7 +39,9 @@ export async function issueRefreshToken(
 ): Promise<string> {
   const raw = crypto.randomBytes(REFRESH_TOKEN_BYTES).toString("hex");
   const tokenHash = hashToken(raw);
-  const expiresAt = new Date(Date.now() + parseExpiryToMs(env.REFRESH_TOKEN_EXPIRY));
+  const expiresAt = new Date(
+    Date.now() + parseExpiryToMs(env.REFRESH_TOKEN_EXPIRY),
+  );
 
   await db.insert(refreshTokens).values({
     userId,
@@ -46,8 +53,14 @@ export async function issueRefreshToken(
   return raw;
 }
 
-export function verifyAccessToken(token: string): { userId: string; email: string } {
-  const payload = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as { sub: string; email: string };
+export function verifyAccessToken(token: string): {
+  userId: string;
+  email: string;
+} {
+  const payload = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as {
+    sub: string;
+    email: string;
+  };
   return { userId: payload.sub, email: payload.email };
 }
 
@@ -57,7 +70,11 @@ export async function verifyAndRotateRefreshToken(
 ): Promise<{ userId: string; newRefreshToken: string } | null> {
   const tokenHash = hashToken(rawToken);
   const rows = await db
-    .select({ userId: refreshTokens.userId, id: refreshTokens.id, expiresAt: refreshTokens.expiresAt })
+    .select({
+      userId: refreshTokens.userId,
+      id: refreshTokens.id,
+      expiresAt: refreshTokens.expiresAt,
+    })
     .from(refreshTokens)
     .where(eq(refreshTokens.tokenHash, tokenHash))
     .limit(1);
