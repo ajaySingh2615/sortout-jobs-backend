@@ -314,7 +314,20 @@ export async function requestOtp(req: Request, res: Response): Promise<void> {
 
   const normalized = userService.normalizePhone(parsed.data.phone);
   const code = await tokenService.createPhoneOtpToken(normalized);
-  await sendOtpSms(normalized, code);
+
+  try {
+    await sendOtpSms(normalized, code);
+  } catch (e) {
+    const err = e as { message?: string; code?: number };
+    const msg = err.message ?? "Failed to send SMS";
+    const twilioCode = err.code;
+    const twilioHint =
+      "Ensure the number is verified in Twilio Console (Phone Numbers → Verified Caller IDs) in E.164 format, e.g. +18808319836 (no spaces).";
+    if (twilioCode === 21211 || twilioCode === 21614 || (msg.includes("Invalid") && msg.toLowerCase().includes("phone"))) {
+      throw new ApiError(400, `${msg} ${twilioHint}`);
+    }
+    throw new ApiError(400, msg);
+  }
 
   res.status(200).json({
     success: true,
