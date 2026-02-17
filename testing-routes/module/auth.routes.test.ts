@@ -3,8 +3,10 @@ import request from "supertest";
 import app from "../../src/app.js";
 import * as tokenService from "../../src/modules/user-management/token.service.js";
 import * as googleAuthService from "../../src/modules/user-management/googleAuth.service.js";
+import * as twilioService from "../../src/modules/user-management/twilio.service.js";
 
 vi.mock("../../src/modules/user-management/googleAuth.service.js");
+vi.mock("../../src/modules/user-management/twilio.service.js");
 
 const BASE = "/api/auth";
 
@@ -447,6 +449,91 @@ describe("POST /api/auth/google", () => {
     const res = await request(app)
       .post(`${BASE}/google`)
       .send({})
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/request-otp", () => {
+  it("returns 503 when Twilio is not configured", async () => {
+    vi.mocked(twilioService.isTwilioConfigured).mockReturnValue(false);
+
+    const res = await request(app)
+      .post(`${BASE}/request-otp`)
+      .send({ phone: "+17656456966" })
+      .expect(503);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("not configured");
+  });
+
+  it("returns 200 and sends OTP when Twilio is configured", async () => {
+    vi.mocked(twilioService.isTwilioConfigured).mockReturnValue(true);
+    vi.mocked(twilioService.sendOtpSms).mockResolvedValue(undefined);
+    const uniquePhone = `+1555${Date.now().toString().slice(-7)}`;
+
+    const res = await request(app)
+      .post(`${BASE}/request-otp`)
+      .send({ phone: uniquePhone })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("OTP was sent");
+    expect(twilioService.sendOtpSms).toHaveBeenCalledWith(
+      uniquePhone,
+      expect.stringMatching(/^\d{6}$/),
+    );
+  });
+
+  it("returns 400 when phone is missing or invalid", async () => {
+    vi.mocked(twilioService.isTwilioConfigured).mockReturnValue(true);
+
+    const res = await request(app)
+      .post(`${BASE}/request-otp`)
+      .send({})
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("Validation failed");
+  });
+});
+
+describe("POST /api/auth/verify-otp", () => {
+  it("returns 200 with user and tokens when code is valid", async () => {
+    const phone = "+17656456966";
+    const code = await tokenService.createPhoneOtpToken(phone);
+
+    const res = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone, code })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe("Logged in");
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.expiresIn).toBe("15m");
+    expect(
+      res.headers["set-cookie"]?.some((c: string) => c.startsWith("refreshToken=")),
+    ).toBe(true);
+  });
+
+  it("returns 400 when code is invalid or expired", async () => {
+    const res = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone: "+17656456966", code: "000000" })
+      .expect(400);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain("Invalid or expired");
+  });
+
+  it("returns 400 when code is missing or wrong length", async () => {
+    const res = await request(app)
+      .post(`${BASE}/verify-otp`)
+      .send({ phone: "+17656456966", code: "123" })
       .expect(400);
 
     expect(res.body.success).toBe(false);

@@ -4,6 +4,7 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).notNull().unique(),
+  phone: varchar("phone", { length: 20 }).unique(),
   passwordHash: varchar("password_hash", { length: 255 }),
   name: varchar("name", { length: 255 }).notNull(),
   avatarUrl: varchar("avatar_url", { length: 512 }),
@@ -60,5 +61,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
-  user: one(users),
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
 }));

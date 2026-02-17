@@ -73,6 +73,97 @@ export async function getByEmail(email: string): Promise<{
   return rows[0] ?? null;
 }
 
+/** Normalize to E.164: digits only, 10 digits => +1 prefix (US). */
+export function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return `+${digits}`;
+}
+
+export async function getByPhone(phone: string): Promise<{
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  role: string;
+  emailVerifiedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+} | null> {
+  const normalized = normalizePhone(phone);
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      avatarUrl: users.avatarUrl,
+      role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .where(eq(users.phone, normalized))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function findOrCreatePhoneUser(phone: string): Promise<UserResponse> {
+  const normalized = normalizePhone(phone);
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.phone, normalized))
+    .limit(1);
+  const row = existing[0];
+  const placeholderEmail = `phone_${normalized.replace(/\D/g, "")}@sortout.phone`;
+  const now = new Date();
+
+  if (row) {
+    const updated = await db
+      .update(users)
+      .set({ provider: "phone", updatedAt: now })
+      .where(eq(users.id, row.id))
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        role: users.role,
+        emailVerifiedAt: users.emailVerifiedAt,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      });
+    const out = updated[0];
+    if (!out) throw new Error("Update failed");
+    return toUserResponse(out);
+  }
+
+  const inserted = await db
+    .insert(users)
+    .values({
+      email: placeholderEmail,
+      phone: normalized,
+      passwordHash: null,
+      name: "User",
+      provider: "phone",
+    })
+    .returning({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      avatarUrl: users.avatarUrl,
+      role: users.role,
+      emailVerifiedAt: users.emailVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    });
+  const newRow = inserted[0];
+  if (!newRow) throw new Error("Insert failed");
+  return toUserResponse(newRow);
+}
+
 export async function login(
   email: string,
   password: string,

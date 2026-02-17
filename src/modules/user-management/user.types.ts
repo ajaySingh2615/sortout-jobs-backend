@@ -37,6 +37,23 @@ export const googleAuthBodySchema = z.object({
   idToken: z.string().min(1, "Google id_token is required"),
 });
 
+const phoneSchema = z
+  .string()
+  .min(10, "Phone number is required")
+  .max(20);
+
+export const requestOtpBodySchema = z.object({
+  phone: phoneSchema,
+});
+
+export const verifyOtpBodySchema = z.object({
+  phone: phoneSchema,
+  code: z
+    .string()
+    .min(1, "Code is required")
+    .refine((s) => /^\d{6}$/.test(s.trim()), "Code must be 6 digits"),
+});
+
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -61,5 +78,7 @@ export type ResendVerifyEmailBody = z.infer<typeof resendVerifyEmailBodySchema>;
 export type ForgotPasswordBody = z.infer<typeof forgotPasswordBodySchema>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 export type GoogleAuthBody = z.infer<typeof googleAuthBodySchema>;
+export type RequestOtpBody = z.infer<typeof requestOtpBodySchema>;
+export type VerifyOtpBody = z.infer<typeof verifyOtpBodySchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;

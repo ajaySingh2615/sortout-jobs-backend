@@ -5,13 +5,23 @@ function msg(message: string) {
   return { success: false, statusCode: 429, message, errors: [] };
 }
 
+function normalizePhoneForKey(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return `+${digits}`;
+}
+
 function getOtpIdentifier(req: Request): string {
+  const phone = req.body?.phone as string | undefined;
+  if (phone && /^\+?\d{10,15}$/.test(phone.replace(/\s/g, ""))) {
+    return normalizePhoneForKey(phone);
+  }
   const raw =
-    (req.body?.phone as string | undefined) ??
+    phone ??
     (req.body?.email as string | undefined) ??
     (req.body?.identifier as string | undefined) ??
     "";
-
   return raw.trim().toLowerCase();
 }
 

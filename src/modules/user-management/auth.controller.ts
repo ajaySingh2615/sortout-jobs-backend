@@ -9,11 +9,14 @@ import {
   forgotPasswordBodySchema,
   resetPasswordBodySchema,
   googleAuthBodySchema,
+  requestOtpBodySchema,
+  verifyOtpBodySchema,
 } from "./user.types.js";
 import * as userService from "./user.service.js";
 import * as tokenService from "./token.service.js";
 import * as emailService from "./email.service.js";
 import { verifyGoogleIdToken } from "./googleAuth.service.js";
+import { sendOtpSms, isTwilioConfigured } from "./twilio.service.js";
 
 const COOKIE_REFRESH = "refreshToken";
 const COOKIE_OPTIONS = {
@@ -280,6 +283,63 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
   }
 
   const user = await userService.findOrCreateGoogleUser(payload);
+  const accessToken = tokenService.issueAccessToken(user.id, user.email);
+  const refreshToken = await tokenService.issueRefreshToken(
+    user.id,
+    req.get("User-Agent") ?? undefined,
+  );
+
+  res.cookie(COOKIE_REFRESH, refreshToken, COOKIE_OPTIONS);
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "Logged in",
+    data: { user, accessToken, expiresIn: "15m" },
+  });
+}
+
+export async function requestOtp(req: Request, res: Response): Promise<void> {
+  const parsed = requestOtpBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+
+  if (!isTwilioConfigured())
+    throw new ApiError(503, "SMS is not configured");
+
+  const normalized = userService.normalizePhone(parsed.data.phone);
+  const code = await tokenService.createPhoneOtpToken(normalized);
+  await sendOtpSms(normalized, code);
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: "If this number is valid, an OTP was sent.",
+    data: null,
+  });
+}
+
+export async function verifyOtp(req: Request, res: Response): Promise<void> {
+  const parsed = verifyOtpBodySchema.safeParse(req.body);
+  if (!parsed.success)
+    throw new ApiError(
+      400,
+      "Validation failed",
+      parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+
+  const normalized = userService.normalizePhone(parsed.data.phone);
+  const result = await tokenService.consumePhoneOtpToken(
+    normalized,
+    parsed.data.code,
+  );
+  if (!result)
+    throw new ApiError(400, "Invalid or expired code");
+
+  const user = await userService.findOrCreatePhoneUser(result.phone);
   const accessToken = tokenService.issueAccessToken(user.id, user.email);
   const refreshToken = await tokenService.issueRefreshToken(
     user.id,

@@ -17,7 +17,7 @@ npm run test        # run once
 npm run test:watch  # watch mode
 ```
 
-**Requirements:** `.env` with `DATABASE_URL` (and other env vars). PostgreSQL must be running (e.g. `docker compose up -d`).
+**Requirements:** `.env` with `DATABASE_URL` (and other env vars). PostgreSQL must be running (e.g. `docker compose up -d`). After adding phone OTP, run **`npm run db:migrate`** so the `users.phone` column exists.
 
 ## Test coverage (auth)
 
@@ -33,6 +33,8 @@ npm run test:watch  # watch mode
 | POST /api/auth/forgot-password | 200 user exists, 200 email not registered (no enumeration), 400 invalid email |
 | POST /api/auth/reset-password | 200 valid token + new password (login with new works), 400 invalid/expired token, 400 newPassword too short |
 | POST /api/auth/google | 200 valid idToken (user + accessToken + cookie), 401 invalid token, 400 missing idToken |
+| POST /api/auth/request-otp | 200 OTP sent (Twilio configured), 503 Twilio not configured, 400 invalid phone, 429 rate limit |
+| POST /api/auth/verify-otp | 200 valid code (user + tokens + cookie), 400 invalid/expired code, 400 invalid body |
 
 ## cURL and Postman
 

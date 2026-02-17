@@ -167,3 +167,42 @@ export async function consumePasswordResetToken(
   await db.delete(authTokens).where(eq(authTokens.id, row.id));
   return { email: row.identifier };
 }
+
+const PHONE_OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function createPhoneOtpToken(phone: string): Promise<string> {
+  const code = String(100000 + Math.floor(Math.random() * 900000));
+  const tokenHash = hashToken(code);
+  const expiresAt = new Date(Date.now() + PHONE_OTP_EXPIRY_MS);
+  const identifier = phone.trim();
+  await db.insert(authTokens).values({
+    type: "phone_otp",
+    identifier,
+    tokenHash,
+    expiresAt,
+  });
+  return code;
+}
+
+export async function consumePhoneOtpToken(
+  phone: string,
+  code: string,
+): Promise<{ phone: string } | null> {
+  const tokenHash = hashToken(code.trim());
+  const identifier = phone.trim();
+  const rows = await db
+    .select({ id: authTokens.id, expiresAt: authTokens.expiresAt })
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.type, "phone_otp"),
+        eq(authTokens.identifier, identifier),
+        eq(authTokens.tokenHash, tokenHash),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row || new Date() > row.expiresAt) return null;
+  await db.delete(authTokens).where(eq(authTokens.id, row.id));
+  return { phone: identifier };
+}

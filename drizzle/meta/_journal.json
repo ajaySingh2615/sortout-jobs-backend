@@ -15,6 +15,13 @@
       "when": 1771268000000,
       "tag": "0001_rename_password_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1739790400000,
+      "tag": "0002_add_users_phone",
+      "breakpoints": true
     }
   ]
 }

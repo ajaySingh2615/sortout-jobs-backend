@@ -117,6 +117,30 @@
         },
         "url": "{{baseUrl}}/api/auth/google"
       }
+    },
+    {
+      "name": "11. Request OTP",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+17656456966\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/request-otp"
+      }
+    },
+    {
+      "name": "12. Verify OTP",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+17656456966\",\n  \"code\": \"123456\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/verify-otp"
+      }
     }
   ]
 }

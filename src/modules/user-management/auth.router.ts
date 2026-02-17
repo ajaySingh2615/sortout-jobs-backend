@@ -2,7 +2,15 @@ import { Router } from "express";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
 import * as authController from "./auth.controller.js";
-import { authLoginLimiter, authRegisterLimiter } from "./rate-limit.js";
+import {
+  authLoginLimiter,
+  authRegisterLimiter,
+  otpRequestCooldownLimiter,
+  otpRequestBurstPerIdentifierLimiter,
+  otpRequestDailyPerIdentifierLimiter,
+  otpRequestPerIpLimiter,
+  otpVerifyPerIpLimiter,
+} from "./rate-limit.js";
 
 const router = Router();
 
@@ -27,5 +35,18 @@ router.post(
 );
 router.post("/forgot-password", asyncHandler(authController.forgotPassword));
 router.post("/reset-password", asyncHandler(authController.resetPassword));
+router.post(
+  "/request-otp",
+  otpRequestPerIpLimiter,
+  otpRequestCooldownLimiter,
+  otpRequestBurstPerIdentifierLimiter,
+  otpRequestDailyPerIdentifierLimiter,
+  asyncHandler(authController.requestOtp),
+);
+router.post(
+  "/verify-otp",
+  otpVerifyPerIpLimiter,
+  asyncHandler(authController.verifyOtp),
+);
 
 export const authRouter = router;
