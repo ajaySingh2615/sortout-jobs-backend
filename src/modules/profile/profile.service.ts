@@ -136,10 +136,18 @@ export async function getFullProfile(userId: string) {
     .where(eq(users.id, profile.userId))
     .limit(1);
 
+  // Notice period for header: use current employment's if set, else profile's
+  const currentEmployment = empList.find((e) => e.isCurrent);
+  const displayNoticePeriod =
+    currentEmployment?.noticePeriod?.trim() ||
+    profile.noticePeriod?.trim() ||
+    null;
+
   return {
     ...profile,
     userId: profile.userId,
     resumeHeadline: profile.headline,
+    noticePeriod: displayNoticePeriod,
     cityName,
     localityName,
     roleName,
