@@ -30,7 +30,10 @@ export const updateBasicProfileSchema = z.object({
   currentSalary: z.number().int().min(0).optional().nullable(),
   preferredCityId: z.number().int().positive().optional(),
   preferredLocalityId: z.number().int().positive().optional().nullable(),
+  cityId: z.number().int().positive().optional(), // alias for preferredCityId (frontend)
+  localityId: z.number().int().positive().optional().nullable(), // alias for preferredLocalityId (frontend)
   noticePeriod: z.string().max(30).optional().nullable(),
+  headline: z.string().max(250).optional().nullable(),
   preferredRoleId: z.number().int().positive().optional(),
   whatsappUpdates: z.boolean().optional(),
 });
@@ -104,3 +107,12 @@ export type EmploymentInput = z.infer<typeof employmentSchema>;
 export type EducationInput = z.infer<typeof educationSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type ItSkillInput = z.infer<typeof itSkillSchema>;
+
+export const initiateEmailChangeSchema = z.object({
+  newEmail: z.string().email(),
+});
+
+export const verifyEmailChangeSchema = z.object({
+  newEmail: z.string().email(),
+  otp: z.string().length(6),
+});

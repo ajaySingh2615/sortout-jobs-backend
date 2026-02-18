@@ -1,6 +1,7 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
+  users,
   profiles,
   profileSkills,
   personalDetails,
@@ -15,6 +16,8 @@ import {
   jobRoles,
 } from "../../db/schema/index.js";
 import { ApiError } from "../../utils/apiError.js";
+import * as tokenService from "../user-management/token.service.js";
+import * as emailService from "../user-management/email.service.js";
 import type {
   UpdateBasicProfile,
   PersonalDetailsInput,
@@ -122,11 +125,27 @@ export async function getFullProfile(userId: string) {
     roleName = role?.name ?? null;
   }
 
+  // User contact info (phone, email) for profile display
+  const [userRow] = await db
+    .select({
+      phone: users.phone,
+      email: users.email,
+      emailVerifiedAt: users.emailVerifiedAt,
+    })
+    .from(users)
+    .where(eq(users.id, profile.userId))
+    .limit(1);
+
   return {
     ...profile,
+    userId: profile.userId,
+    resumeHeadline: profile.headline,
     cityName,
     localityName,
     roleName,
+    phone: userRow?.phone ?? null,
+    email: userRow?.email ?? null,
+    emailVerified: !!userRow?.emailVerifiedAt,
     skills: profileSkillRows,
     personalDetails: personal ?? null,
     employments: empList,
@@ -144,12 +163,74 @@ export async function updateBasicProfile(
   data: UpdateBasicProfile,
 ) {
   const profile = requireProfile(await getProfileByUserId(userId));
+  const {
+    cityId,
+    localityId,
+    headline: headlineVal,
+    ...rest
+  } = data as UpdateBasicProfile & {
+    cityId?: number;
+    localityId?: number | null;
+    headline?: string | null;
+  };
+  const updatePayload: Record<string, unknown> = { ...rest, updatedAt: new Date() };
+  if (cityId !== undefined) updatePayload.preferredCityId = cityId;
+  if (localityId !== undefined) updatePayload.preferredLocalityId = localityId;
+  if (headlineVal !== undefined) updatePayload.headline = headlineVal;
   const [updated] = await db
     .update(profiles)
-    .set({ ...data, updatedAt: new Date() })
+    .set(updatePayload as typeof profiles.$inferInsert)
     .where(eq(profiles.id, profile.id))
     .returning();
   return updated;
+}
+
+// ─── Email change (OTP) ───────────────────────────────────────
+
+export async function initiateEmailChange(
+  userId: string,
+  newEmail: string,
+): Promise<{ expiresInSeconds: number }> {
+  const email = newEmail.toLowerCase().trim();
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+  if (existing.length > 0) {
+    throw new ApiError(409, "This email is already registered");
+  }
+  const { code, expiresInSeconds } =
+    await tokenService.createEmailChangeOtpToken(userId, email);
+  const sent = await emailService.sendEmailChangeOtp(email, code);
+  if (!sent.ok) {
+    throw new ApiError(500, sent.error ?? "Failed to send OTP email");
+  }
+  return { expiresInSeconds };
+}
+
+export async function verifyEmailChange(
+  userId: string,
+  newEmail: string,
+  code: string,
+): Promise<{ newEmail: string }> {
+  const result = await tokenService.consumeEmailChangeOtpToken(
+    userId,
+    newEmail,
+    code,
+  );
+  if (!result) {
+    throw new ApiError(400, "Invalid or expired OTP");
+  }
+  await db
+    .update(users)
+    .set({
+      email: result.newEmail,
+      emailVerifiedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  return { newEmail: result.newEmail };
 }
 
 // ─── Headline + Summary ──────────────────────────────────────

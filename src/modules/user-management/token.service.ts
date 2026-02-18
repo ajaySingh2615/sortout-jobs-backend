@@ -207,3 +207,46 @@ export async function consumePhoneOtpToken(
   await db.delete(authTokens).where(eq(authTokens.id, row.id));
   return { phone: identifier };
 }
+
+const EMAIL_CHANGE_OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+export async function createEmailChangeOtpToken(
+  userId: string,
+  newEmail: string,
+): Promise<{ code: string; expiresInSeconds: number }> {
+  const code = String(100000 + Math.floor(Math.random() * 900000));
+  const tokenHash = hashToken(code);
+  const expiresAt = new Date(Date.now() + EMAIL_CHANGE_OTP_EXPIRY_MS);
+  const identifier = `${userId}:${newEmail.toLowerCase().trim()}`;
+  await db.insert(authTokens).values({
+    type: "email_change",
+    identifier,
+    tokenHash,
+    expiresAt,
+  });
+  return { code, expiresInSeconds: Math.floor(EMAIL_CHANGE_OTP_EXPIRY_MS / 1000) };
+}
+
+export async function consumeEmailChangeOtpToken(
+  userId: string,
+  newEmail: string,
+  code: string,
+): Promise<{ newEmail: string } | null> {
+  const tokenHash = hashToken(code.trim());
+  const identifier = `${userId}:${newEmail.toLowerCase().trim()}`;
+  const rows = await db
+    .select({ id: authTokens.id, expiresAt: authTokens.expiresAt })
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.type, "email_change"),
+        eq(authTokens.identifier, identifier),
+        eq(authTokens.tokenHash, tokenHash),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row || new Date() > row.expiresAt) return null;
+  await db.delete(authTokens).where(eq(authTokens.id, row.id));
+  return { newEmail: newEmail.toLowerCase().trim() };
+}

@@ -54,3 +54,29 @@ export async function sendPasswordResetEmail(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+export async function sendEmailChangeOtp(
+  to: string,
+  code: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[dev] Email change OTP for ${to}: ${code}`);
+    }
+    return { ok: true };
+  }
+  const { error } = await resend.emails.send({
+    from: env.FROM_EMAIL,
+    to: [to],
+    subject: "Verify your new email — SortOut Jobs",
+    html: `
+      <p>Hi,</p>
+      <p>Your verification code to update your email is:</p>
+      <p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p>
+      <p>This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+      <p>— SortOut Jobs</p>
+    `,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

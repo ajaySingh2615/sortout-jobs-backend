@@ -178,3 +178,15 @@ profileRouter.delete(
   requireAuth,
   asyncHandler(profileController.deleteResume),
 );
+
+// Email change (OTP)
+profileRouter.post(
+  "/:userId/email/initiate",
+  requireAuth,
+  asyncHandler(profileController.initiateEmailChange),
+);
+profileRouter.post(
+  "/:userId/email/verify",
+  requireAuth,
+  asyncHandler(profileController.verifyEmailChange),
+);

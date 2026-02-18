@@ -11,6 +11,8 @@ import {
   educationSchema,
   projectSchema,
   itSkillSchema,
+  initiateEmailChangeSchema,
+  verifyEmailChangeSchema,
 } from "./profile.types.js";
 
 function assertOwner(req: Request): string {
@@ -279,4 +281,26 @@ export async function deleteResume(
   const userId = assertOwner(req);
   await profileService.deleteResume(userId);
   res.json(new ApiResponse(200, "Resume deleted", null));
+}
+
+// ─── Email change (OTP) ───────────────────────────────────────
+
+export async function initiateEmailChange(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const userId = assertOwner(req);
+  const { newEmail } = initiateEmailChangeSchema.parse(req.body);
+  const data = await profileService.initiateEmailChange(userId, newEmail);
+  res.json(new ApiResponse(200, "OTP sent to your new email", data));
+}
+
+export async function verifyEmailChange(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const userId = assertOwner(req);
+  const { newEmail, otp } = verifyEmailChangeSchema.parse(req.body);
+  const data = await profileService.verifyEmailChange(userId, newEmail, otp);
+  res.json(new ApiResponse(200, "Email updated successfully", data));
 }
