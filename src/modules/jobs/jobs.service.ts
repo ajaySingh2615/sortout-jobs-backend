@@ -57,15 +57,13 @@ export async function getJobs(page: number, size: number) {
     .where(eq(jobs.isActive, true));
 
   const enriched = await Promise.all(jobList.map(enrichJob));
+  const totalPages = Math.ceil(total / size);
 
   return {
     jobs: enriched,
-    pagination: {
-      page,
-      size,
-      total,
-      totalPages: Math.ceil(total / size),
-    },
+    totalElements: total,
+    hasNext: page < totalPages,
+    pagination: { page, size, total, totalPages },
   };
 }
 
@@ -121,10 +119,13 @@ export async function searchJobs(
     .where(where);
 
   const enriched = await Promise.all(jobList.map(enrichJob));
+  const totalPages = Math.ceil(total / size);
 
   return {
     jobs: enriched,
-    pagination: { page, size, total, totalPages: Math.ceil(total / size) },
+    totalElements: total,
+    hasNext: page < totalPages,
+    pagination: { page, size, total, totalPages },
   };
 }
 
@@ -167,26 +168,45 @@ export async function getRecommendedJobs(
     matchingJobIds = [...new Set(matchedJobs.map((r) => r.jobId))];
   }
 
-  const conditions = [eq(jobs.isActive, true)];
+  // Jobs in user's preferred role (e.g. Software Engineer, Digital Marketing)
+  let roleJobIds: number[] = [];
+  if (profile.preferredRoleId) {
+    const roleJobs = await db
+      .select({ jobId: jobSkills.jobId })
+      .from(jobSkills)
+      .innerJoin(skills, eq(jobSkills.skillId, skills.id))
+      .where(eq(skills.roleId, profile.preferredRoleId));
+    roleJobIds = [...new Set(roleJobs.map((r) => r.jobId))];
+  }
 
-  if (matchingJobIds.length > 0) {
-    const orConditions = [inArray(jobs.id, matchingJobIds)];
-    if (profile.preferredCityId) {
-      orConditions.push(eq(jobs.cityId, profile.preferredCityId));
-    }
+  const conditions = [eq(jobs.isActive, true)];
+  const orConditions: ReturnType<typeof inArray>[] = [];
+  if (matchingJobIds.length > 0) orConditions.push(inArray(jobs.id, matchingJobIds));
+  if (roleJobIds.length > 0) orConditions.push(inArray(jobs.id, roleJobIds));
+  if (profile.preferredCityId) orConditions.push(eq(jobs.cityId, profile.preferredCityId));
+
+  if (orConditions.length > 0) {
     conditions.push(or(...orConditions)!);
-  } else if (profile.preferredCityId) {
-    conditions.push(eq(jobs.cityId, profile.preferredCityId));
   }
 
   const where = and(...conditions);
   const offset = (page - 1) * size;
 
+  // Order: preferred-role jobs first, then featured, then newest
+  const orderByClauses =
+    roleJobIds.length > 0
+      ? [
+          sql`CASE WHEN (${inArray(jobs.id, roleJobIds)}) THEN 0 ELSE 1 END`,
+          desc(jobs.isFeatured),
+          desc(jobs.createdAt),
+        ]
+      : [desc(jobs.isFeatured), desc(jobs.createdAt)];
+
   const jobList = await db
     .select()
     .from(jobs)
     .where(where)
-    .orderBy(desc(jobs.isFeatured), desc(jobs.createdAt))
+    .orderBy(...orderByClauses)
     .limit(size)
     .offset(offset);
 
@@ -196,10 +216,13 @@ export async function getRecommendedJobs(
     .where(where);
 
   const enriched = await Promise.all(jobList.map(enrichJob));
+  const totalPages = Math.ceil(total / size);
 
   return {
     jobs: enriched,
-    pagination: { page, size, total, totalPages: Math.ceil(total / size) },
+    totalElements: total,
+    hasNext: page < totalPages,
+    pagination: { page, size, total, totalPages },
   };
 }
 
@@ -283,10 +306,13 @@ export async function getSavedJobs(userId: string, page: number, size: number) {
       return { ...e, savedAt: row.saved_jobs.createdAt };
     }),
   );
+  const totalPages = Math.ceil(total / size);
 
   return {
     jobs: enriched,
-    pagination: { page, size, total, totalPages: Math.ceil(total / size) },
+    totalElements: total,
+    hasNext: page < totalPages,
+    pagination: { page, size, total, totalPages },
   };
 }
 

@@ -13,9 +13,10 @@ export async function getJobs(req: Request, res: Response): Promise<void> {
 }
 
 export async function searchJobs(req: Request, res: Response): Promise<void> {
-  const filters = jobSearchSchema.parse(req.body);
-  const page = Math.max(1, Number(req.query.page) || Number(req.body.page) || 1);
-  const size = Math.min(50, Math.max(1, Number(req.query.size) || Number(req.body.size) || 10));
+  const parsed = jobSearchSchema.parse(req.body);
+  const { page: bodyPage, size: bodySize, ...filters } = parsed;
+  const page = Math.max(1, Number(req.query.page) ?? bodyPage ?? 1);
+  const size = Math.min(50, Math.max(1, Number(req.query.size) ?? bodySize ?? 10));
   const data = await jobsService.searchJobs(filters, page, size);
   res.json(new ApiResponse(200, "Search results", data));
 }

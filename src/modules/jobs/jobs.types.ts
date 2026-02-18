@@ -11,6 +11,8 @@ export const jobSearchSchema = z.object({
   cityId: z.number().int().positive().optional(),
   experienceLevel: z.number().int().min(0).optional(),
   salaryMin: z.number().int().min(0).optional(),
+  page: z.number().int().min(1).optional(),
+  size: z.number().int().min(1).max(50).optional(),
 });
 
 export const applyJobSchema = z.object({
