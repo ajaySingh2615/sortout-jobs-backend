@@ -13,6 +13,7 @@ export const jobSearchSchema = z.object({
   salaryMin: z.number().int().min(0).optional(),
   page: z.number().int().min(1).optional(),
   size: z.number().int().min(1).max(50).optional(),
+  userId: z.string().uuid().optional(),
 });
 
 export const applyJobSchema = z.object({

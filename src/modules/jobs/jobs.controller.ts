@@ -8,16 +8,17 @@ import { jobSearchSchema, applyJobSchema } from "./jobs.types.js";
 export async function getJobs(req: Request, res: Response): Promise<void> {
   const page = Math.max(1, Number(req.query.page) || 1);
   const size = Math.min(50, Math.max(1, Number(req.query.size) || 10));
-  const data = await jobsService.getJobs(page, size);
+  const userId = (req.query.userId as string) || undefined;
+  const data = await jobsService.getJobs(page, size, userId);
   res.json(new ApiResponse(200, "Jobs fetched", data));
 }
 
 export async function searchJobs(req: Request, res: Response): Promise<void> {
   const parsed = jobSearchSchema.parse(req.body);
-  const { page: bodyPage, size: bodySize, ...filters } = parsed;
+  const { page: bodyPage, size: bodySize, userId, ...filters } = parsed;
   const page = Math.max(1, Number(req.query.page) ?? bodyPage ?? 1);
   const size = Math.min(50, Math.max(1, Number(req.query.size) ?? bodySize ?? 10));
-  const data = await jobsService.searchJobs(filters, page, size);
+  const data = await jobsService.searchJobs(filters, page, size, userId);
   res.json(new ApiResponse(200, "Search results", data));
 }
 

@@ -38,9 +38,47 @@ async function enrichJob(job: typeof jobs.$inferSelect) {
   return { ...job, cityName, skills: jobSkillRows };
 }
 
+async function addSavedAppliedToJobs(
+  enrichedJobs: Awaited<ReturnType<typeof enrichJob>>[],
+  userId: string,
+) {
+  if (enrichedJobs.length === 0) return enrichedJobs;
+  const jobIds = enrichedJobs.map((j) => j.id);
+
+  const [savedRows, appliedRows] = await Promise.all([
+    db
+      .select({ jobId: savedJobs.jobId })
+      .from(savedJobs)
+      .where(
+        and(eq(savedJobs.userId, userId), inArray(savedJobs.jobId, jobIds))),
+    db
+      .select({ jobId: applications.jobId })
+      .from(applications)
+      .where(
+        and(
+          eq(applications.userId, userId),
+          inArray(applications.jobId, jobIds),
+        ),
+      ),
+  ]);
+
+  const savedSet = new Set(savedRows.map((r) => r.jobId));
+  const appliedSet = new Set(appliedRows.map((r) => r.jobId));
+
+  return enrichedJobs.map((job) => ({
+    ...job,
+    isSaved: savedSet.has(job.id),
+    isApplied: appliedSet.has(job.id),
+  }));
+}
+
 // ─── Paginated Job List ──────────────────────────────────────
 
-export async function getJobs(page: number, size: number) {
+export async function getJobs(
+  page: number,
+  size: number,
+  userId?: string,
+) {
   const offset = (page - 1) * size;
 
   const jobList = await db
@@ -56,7 +94,11 @@ export async function getJobs(page: number, size: number) {
     .from(jobs)
     .where(eq(jobs.isActive, true));
 
-  const enriched = await Promise.all(jobList.map(enrichJob));
+  let enriched = await Promise.all(jobList.map(enrichJob));
+  if (userId) {
+    enriched = await addSavedAppliedToJobs(enriched, userId);
+  }
+
   const totalPages = Math.ceil(total / size);
 
   return {
@@ -73,6 +115,7 @@ export async function searchJobs(
   filters: JobSearchInput,
   page: number,
   size: number,
+  userId?: string,
 ) {
   const conditions = [eq(jobs.isActive, true)];
 
@@ -118,7 +161,10 @@ export async function searchJobs(
     .from(jobs)
     .where(where);
 
-  const enriched = await Promise.all(jobList.map(enrichJob));
+  let enriched = await Promise.all(jobList.map(enrichJob));
+  if (userId) {
+    enriched = await addSavedAppliedToJobs(enriched, userId);
+  }
   const totalPages = Math.ceil(total / size);
 
   return {
@@ -179,28 +225,22 @@ export async function getRecommendedJobs(
     roleJobIds = [...new Set(roleJobs.map((r) => r.jobId))];
   }
 
-  const conditions = [eq(jobs.isActive, true)];
-  const orConditions: ReturnType<typeof inArray>[] = [];
-  if (matchingJobIds.length > 0) orConditions.push(inArray(jobs.id, matchingJobIds));
-  if (roleJobIds.length > 0) orConditions.push(inArray(jobs.id, roleJobIds));
-  if (profile.preferredCityId) orConditions.push(eq(jobs.cityId, profile.preferredCityId));
-
-  if (orConditions.length > 0) {
-    conditions.push(or(...orConditions)!);
-  }
-
-  const where = and(...conditions);
+  // Show all active jobs (no filter), but order by relevance so preferred-role/skills appear first
+  const where = eq(jobs.isActive, true);
   const offset = (page - 1) * size;
 
-  // Order: preferred-role jobs first, then featured, then newest
-  const orderByClauses =
-    roleJobIds.length > 0
-      ? [
-          sql`CASE WHEN (${inArray(jobs.id, roleJobIds)}) THEN 0 ELSE 1 END`,
-          desc(jobs.isFeatured),
-          desc(jobs.createdAt),
-        ]
-      : [desc(jobs.isFeatured), desc(jobs.createdAt)];
+  const orderByClauses: (ReturnType<typeof desc> | ReturnType<typeof sql>)[] = [];
+  if (roleJobIds.length > 0) {
+    orderByClauses.push(
+      sql`CASE WHEN (${inArray(jobs.id, roleJobIds)}) THEN 0 ELSE 1 END`,
+    );
+  }
+  if (matchingJobIds.length > 0) {
+    orderByClauses.push(
+      sql`CASE WHEN (${inArray(jobs.id, matchingJobIds)}) THEN 0 ELSE 1 END`,
+    );
+  }
+  orderByClauses.push(desc(jobs.isFeatured), desc(jobs.createdAt));
 
   const jobList = await db
     .select()
@@ -215,7 +255,8 @@ export async function getRecommendedJobs(
     .from(jobs)
     .where(where);
 
-  const enriched = await Promise.all(jobList.map(enrichJob));
+  let enriched = await Promise.all(jobList.map(enrichJob));
+  enriched = await addSavedAppliedToJobs(enriched, userId);
   const totalPages = Math.ceil(total / size);
 
   return {
