@@ -305,11 +305,20 @@ export async function getEmployments(userId: string) {
     .orderBy(employments.startDate);
 }
 
+function normalizeEmploymentDates(data: EmploymentInput) {
+  return {
+    ...data,
+    startDate: data.startDate?.trim() ? data.startDate : null,
+    endDate: data.endDate?.trim() ? data.endDate : null,
+  };
+}
+
 export async function createEmployment(userId: string, data: EmploymentInput) {
   const profile = requireProfile(await getProfileByUserId(userId));
+  const payload = normalizeEmploymentDates(data);
   const [created] = await db
     .insert(employments)
-    .values({ profileId: profile.id, ...data })
+    .values({ profileId: profile.id, ...payload })
     .returning();
   return created;
 }
@@ -320,9 +329,10 @@ export async function updateEmployment(
   data: EmploymentInput,
 ) {
   const profile = requireProfile(await getProfileByUserId(userId));
+  const payload = normalizeEmploymentDates(data);
   const [updated] = await db
     .update(employments)
-    .set({ ...data, updatedAt: new Date() })
+    .set({ ...payload, updatedAt: new Date() })
     .where(
       and(
         eq(employments.id, employmentId),
@@ -404,6 +414,14 @@ export async function deleteEducation(userId: string, educationId: number) {
 
 // ─── Projects CRUD ───────────────────────────────────────────
 
+function normalizeProjectDates(data: ProjectInput) {
+  return {
+    ...data,
+    startDate: data.startDate?.trim() ? data.startDate : null,
+    endDate: data.endDate?.trim() ? data.endDate : null,
+  };
+}
+
 export async function getProjects(userId: string) {
   const profile = requireProfile(await getProfileByUserId(userId));
   return db
@@ -415,9 +433,10 @@ export async function getProjects(userId: string) {
 
 export async function createProject(userId: string, data: ProjectInput) {
   const profile = requireProfile(await getProfileByUserId(userId));
+  const payload = normalizeProjectDates(data);
   const [created] = await db
     .insert(projects)
-    .values({ profileId: profile.id, ...data })
+    .values({ profileId: profile.id, ...payload })
     .returning();
   return created;
 }
@@ -428,9 +447,10 @@ export async function updateProject(
   data: ProjectInput,
 ) {
   const profile = requireProfile(await getProfileByUserId(userId));
+  const payload = normalizeProjectDates(data);
   const [updated] = await db
     .update(projects)
-    .set({ ...data, updatedAt: new Date() })
+    .set({ ...payload, updatedAt: new Date() })
     .where(
       and(eq(projects.id, projectId), eq(projects.profileId, profile.id)),
     )
